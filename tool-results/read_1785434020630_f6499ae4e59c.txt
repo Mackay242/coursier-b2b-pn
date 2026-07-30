@@ -1,0 +1,1065 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→     4→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     5→     5→import { Badge } from '@/components/ui/badge';
+     6→     6→import { Button } from '@/components/ui/button';
+     7→     7→import { Input } from '@/components/ui/input';
+     8→     8→import { Textarea } from '@/components/ui/textarea';
+     9→     9→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    10→    10→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    11→    11→import { Progress } from '@/components/ui/progress';
+    12→    12→import { Separator } from '@/components/ui/separator';
+    13→    13→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    14→    14→import { ScrollArea } from '@/components/ui/scroll-area';
+    15→    15→import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+    16→    16→import {
+    17→    17→  Package, MapPin, Clock, Phone, FileText, BarChart3, Users, Truck,
+    18→    18→  ChevronRight, Search, Plus, Bell, Settings, LogOut, TrendingUp,
+    19→    19→  Navigation, CheckCircle2, Circle, AlertCircle, Zap, Shield, Receipt,
+    20→    20→  ArrowUpRight, ArrowDownRight, Send, Star, CreditCard,
+    21→    21→  Building2, Route, Calendar, Filter, Eye, Bike, Menu, X,
+    22→    22→  Timer, MapPinned, LayoutDashboard, ChevronLeft, FileCheck2,
+    23→    23→  CircleDollarSign, Wallet, MessageCircle, Download
+    24→    24→} from 'lucide-react';
+    25→    25→
+    26→    26→// ============================================================
+    27→    27→// TYPES
+    28→    28→// ============================================================
+    29→    29→type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres';
+    30→    30→
+    31→    31→interface Delivery {
+    32→    32→  id: string;
+    33→    33→  reference: string;
+    34→    34→  type: 'standard' | 'express' | 'inter-arrondissement';
+    35→    35→  status: 'en_attente' | 'prise_en_charge' | 'en_course' | 'livre' | 'annulee';
+    36→    36→  client: string;
+    37→    37→  pickup: string;
+    38→    38→  dropoff: string;
+    39→    39→  livreur?: string;
+    40→    40→  createdAt: string;
+    41→    41→  price: number;
+    42→    42→  priority: 'normale' | 'haute' | 'urgente';
+    43→    43→}
+    44→    44→
+    45→    45→// ============================================================
+    46→    46→// MOCK DATA
+    47→    47→// ============================================================
+    48→    48→const fmt = (h: number, m: number) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    49→    49→
+    50→    50→const deliveries: Delivery[] = [
+    51→    51→  { id: '1', reference: 'CMD-20260730-001', type: 'express', status: 'en_course', client: 'BGFI Bank Congo', pickup: "Av. de l'Independance, Centre-ville", dropoff: 'Bd Charles de Gaulle, Tie-Tie', livreur: 'Mouamba P.', createdAt: fmt(8, 15), price: 3500, priority: 'haute' },
+    52→    52→  { id: '2', reference: 'CMD-20260730-002', type: 'standard', status: 'prise_en_charge', client: 'Cabinet Okombi & Associes', pickup: 'Zone portuaire, PAPN', dropoff: 'Rue du Commerce, Lumumba', livreur: "N'Goma J.", createdAt: fmt(8, 32), price: 2500, priority: 'normale' },
+    53→    53→  { id: '3', reference: 'CMD-20260730-003', type: 'inter-arrondissement', status: 'en_attente', client: 'TotalEnergies E&P', pickup: 'Base industrielle Djeno', dropoff: 'Siege social, Centre-ville', createdAt: fmt(8, 45), price: 5000, priority: 'normale' },
+    54→    54→  { id: '4', reference: 'CMD-20260730-004', type: 'standard', status: 'livre', client: 'Ecobank Congo', pickup: 'Bd Denis Sassou, Centre-ville', dropoff: 'Mairie de Pointe-Noire', livreur: 'Mouamba P.', createdAt: fmt(7, 50), price: 2500, priority: 'normale' },
+    55→    55→  { id: '5', reference: 'CMD-20260730-005', type: 'express', status: 'en_attente', client: 'Societe Generale Congo', pickup: 'Av. Amilcar Cabral', dropoff: 'Douanes, Port Autonome', createdAt: fmt(8, 50), price: 3500, priority: 'urgente' },
+    56→    56→  { id: '6', reference: 'CMD-20260729-018', type: 'standard', status: 'livre', client: 'BICEC', pickup: 'Centre-ville', dropoff: 'Arrondissement 3, Ngoyo', livreur: 'Tchikoula R.', createdAt: fmt(16, 20), price: 3000, priority: 'normale' },
+    57→    57→  { id: '7', reference: 'CMD-20260729-012', type: 'express', status: 'livre', client: 'BGFI Bank Congo', pickup: 'Centre-ville', dropoff: 'Douanes', livreur: 'Makosso B.', createdAt: fmt(14, 10), price: 3500, priority: 'haute' },
+    58→    58→  { id: '8', reference: 'CMD-20260730-006', type: 'standard', status: 'en_attente', client: 'ENI Congo', pickup: 'Base Total, Djeno', dropoff: 'Ministere des Transports', createdAt: fmt(9, 0), price: 4500, priority: 'normale' },
+    59→    59→];
+    60→    60→
+    61→    61→const livreurs = [
+    62→    62→  { id: '1', name: 'Mouamba Patrick', status: 'en_course', courses: 4, rating: 4.8, zone: 'Centre-ville', vehicle: 'Moto Haojin 125', phone: '+242 06 123 4567' },
+    63→    63→  { id: '2', name: "N'Goma Jean", status: 'disponible', courses: 2, rating: 4.5, zone: 'Tie-Tie', vehicle: 'Moto Jialing 110', phone: '+242 06 234 5678' },
+    64→    64→  { id: '3', name: 'Tchikoula Raoul', status: 'en_course', courses: 3, rating: 4.9, zone: 'Lumumba', vehicle: 'Moto Loncin 125', phone: '+242 06 345 6789' },
+    65→    65→  { id: '4', name: 'Makosso Brice', status: 'disponible', courses: 1, rating: 4.2, zone: 'Zone portuaire', vehicle: 'Moto Haojin 110', phone: '+242 06 456 7890' },
+    66→    66→  { id: '5', name: 'Loemba Fabrice', status: 'pause', courses: 3, rating: 4.6, zone: 'Ngoyo', vehicle: 'Toyota Corolla', phone: '+242 06 567 8901' },
+    67→    67→];
+    68→    68→
+    69→    69→const clients = [
+    70→    70→  { name: 'BGFI Bank Congo', plan: 'Pack Business', courses: 28, mrr: 180000, since: 'Mars 2026' },
+    71→    71→  { name: 'TotalEnergies E&P Congo', plan: 'Pack Premium', courses: 55, mrr: 350000, since: 'Janvier 2026' },
+    72→    72→  { name: 'Cabinet Okombi & Associes', plan: 'Pack Decouverte', courses: 8, mrr: 75000, since: 'Juin 2026' },
+    73→    73→  { name: 'Ecobank Congo', plan: 'Pack Business', courses: 22, mrr: 180000, since: 'Fevrier 2026' },
+    74→    74→  { name: 'Societe Generale Congo', plan: 'Pack Premium', courses: 48, mrr: 350000, since: 'Janvier 2026' },
+    75→    75→  { name: 'BICEC', plan: 'Pack Business', courses: 15, mrr: 180000, since: 'Avril 2026' },
+    76→    76→  { name: 'ENI Congo', plan: 'Pack Premium', courses: 42, mrr: 350000, since: 'Fevrier 2026' },
+    77→    77→];
+    78→    78→
+    79→    79→const invoices = [
+    80→    80→  { id: 'FAC-202607-001', client: 'BGFI Bank Congo', period: 'Juillet 2026', amount: 245000, status: 'payee', courses: 28, paidDate: '28/07/2026' },
+    81→    81→  { id: 'FAC-202607-002', client: 'TotalEnergies E&P', period: 'Juillet 2026', amount: 475000, status: 'en_attente', courses: 55, paidDate: null },
+    82→    82→  { id: 'FAC-202607-003', client: 'Ecobank Congo', period: 'Juillet 2026', amount: 185000, status: 'payee', courses: 22, paidDate: '25/07/2026' },
+    83→    83→  { id: 'FAC-202607-004', client: 'Societe Generale Congo', period: 'Juillet 2026', amount: 520000, status: 'en_retard', courses: 48, paidDate: null },
+    84→    84→  { id: 'FAC-202607-005', client: 'ENI Congo', period: 'Juillet 2026', amount: 410000, status: 'en_attente', courses: 42, paidDate: null },
+    85→    85→  { id: 'FAC-202606-001', client: 'BGFI Bank Congo', period: 'Juin 2026', amount: 210000, status: 'payee', courses: 24, paidDate: '28/06/2026' },
+    86→    86→];
+    87→    87→
+    88→    88→// ============================================================
+    89→    89→// STATUS HELPERS
+    90→    90→// ============================================================
+    91→    91→const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+    92→    92→  en_attente: { label: 'En attente', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: <Clock className="w-3 h-3" /> },
+    93→    93→  prise_en_charge: { label: 'Pris en charge', color: 'bg-sky-100 text-sky-800 border-sky-200', icon: <Package className="w-3 h-3" /> },
+    94→    94→  en_course: { label: 'En course', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <Navigation className="w-3 h-3" /> },
+    95→    95→  livre: { label: 'Livree', color: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: <CheckCircle2 className="w-3 h-3" /> },
+    96→    96→  annulee: { label: 'Annulee', color: 'bg-red-100 text-red-800 border-red-200', icon: <AlertCircle className="w-3 h-3" /> },
+    97→    97→  disponible: { label: 'Disponible', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" /> },
+    98→    98→  pause: { label: 'En pause', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: <Clock className="w-3 h-3" /> },
+    99→    99→  payee: { label: 'Payee', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" /> },
+   100→   100→  en_attente_inv: { label: 'En attente', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: <Clock className="w-3 h-3" /> },
+   101→   101→  en_retard: { label: 'En retard', color: 'bg-red-100 text-red-800 border-red-200', icon: <AlertCircle className="w-3 h-3" /> },
+   102→   102→};
+   103→   103→
+   104→   104→const StatusBadge = ({ status }: { status: string }) => {
+   105→   105→  const key = status === 'en_retard' ? 'en_retard' : status === 'payee' ? 'payee' : status;
+   106→   106→  const cfg = statusConfig[key] || statusConfig.en_attente;
+   107→   107→  return (
+   108→   108→    <Badge variant="outline" className={`${cfg.color} gap-1 text-xs font-medium`}>
+   109→   109→      {cfg.icon} {cfg.label}
+   110→   110→    </Badge>
+   111→   111→  );
+   112→   112→};
+   113→   113→
+   114→   114→// ============================================================
+   115→   115→// SHARED COMPONENTS
+   116→   116→// ============================================================
+   117→   117→function StatCard({ title, value, subtitle, icon, trend, trendUp }: {
+   118→   118→  title: string; value: string; subtitle?: string; icon: React.ReactNode; trend?: string; trendUp?: boolean;
+   119→   119→}) {
+   120→   120→  return (
+   121→   121→    <Card className="relative overflow-hidden">
+   122→   122→      <CardContent className="p-5">
+   123→   123→        <div className="flex items-start justify-between">
+   124→   124→          <div className="space-y-1">
+   125→   125→            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+   126→   126→            <p className="text-2xl font-bold tracking-tight">{value}</p>
+   127→   127→            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+   128→   128→            {trend && (
+   129→   129→              <div className={`flex items-center gap-1 text-xs mt-2 ${trendUp ? 'text-emerald-600' : 'text-red-500'}`}>
+   130→   130→                {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+   131→   131→                <span className="font-medium">{trend}</span>
+   132→   132→              </div>
+   133→   133→            )}
+   134→   134→          </div>
+   135→   135→          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+   136→   136→            {icon}
+   137→   137→          </div>
+   138→   138→        </div>
+   139→   139→      </CardContent>
+   140→   140→    </Card>
+   141→   141→  );
+   142→   142→}
+   143→   143→
+   144→   144→function MiniMap() {
+   145→   145→  const [activeDot, setActiveDot] = useState(0);
+   146→   146→  useEffect(() => {
+   147→   147→    const interval = setInterval(() => setActiveDot(d => (d + 1) % 4), 2000);
+   148→   148→    return () => clearInterval(interval);
+   149→   149→  }, []);
+   150→   150→
+   151→   151→  const points = [
+   152→   152→    { label: 'Depart', x: 25, y: 65, color: 'bg-emerald-500' },
+   153→   153→    { label: 'Point actuel', x: 45, y: 45, color: 'bg-primary animate-pulse' },
+   154→   154→    { label: 'Intermediaire', x: 60, y: 35, color: 'bg-amber-400' },
+   155→   155→    { label: 'Arrivee', x: 80, y: 20, color: 'bg-red-500' },
+   156→   156→  ];
+   157→   157→
+   158→   158→  return (
+   159→   159→    <div className="relative w-full h-48 bg-gradient-to-br from-emerald-50 via-sky-50 to-amber-50 rounded-xl overflow-hidden border">
+   160→   160→      <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+   161→   161→        <defs>
+   162→   162→          <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+   163→   163→            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#16a34a" strokeWidth="0.5"/>
+   164→   164→          </pattern>
+   165→   165→        </defs>
+   166→   166→        <rect width="100%" height="100%" fill="url(#grid)" />
+   167→   167→        <path d="M 25% 65% Q 35% 55% 45% 45% T 60% 35% T 80% 20%" fill="none" stroke="#16a34a" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
+   168→   168→      </svg>
+   169→   169→      {points.map((p, i) => (
+   170→   170→        <div key={i} className={`absolute flex flex-col items-center gap-0.5 transition-all duration-1000 ${i <= activeDot ? 'opacity-100' : 'opacity-30'}`}>
+   171→   171→          <span className="text-[10px] font-medium text-muted-foreground bg-white/80 px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">{p.label}</span>
+   172→   172→          <div className={`w-3 h-3 rounded-full ${p.color} shadow-lg ${i === activeDot ? 'ring-4 ring-emerald-200' : ''}`} style={{ left: `${p.x}%`, top: `${p.y}%` }} />
+   173→   173→        </div>
+   174→   174→      ))}
+   175→   175→      <div className="absolute bottom-1 left-2 text-[9px] text-muted-foreground/60 font-medium">Centre-ville</div>
+   176→   176→      <div className="absolute bottom-1 right-2 text-[9px] text-muted-foreground/60 font-medium">Tie-Tie</div>
+   177→   177→      <div className="absolute top-1 right-2 text-[9px] text-muted-foreground/60 font-medium">Zone portuaire</div>
+   178→   178→      <div className="absolute top-1 left-2 text-[9px] text-muted-foreground/60 font-medium">Lumumba</div>
+   179→   179→    </div>
+   180→   180→  );
+   181→   181→}
+   182→   182→
+   183→   183→// ============================================================
+   184→   184→// SIDEBAR NAVIGATION
+   185→   185→// ============================================================
+   186→   186→const navItems: { id: View; label: string; icon: React.ReactNode; badge?: number }[] = [
+   187→   187→  { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
+   188→   188→  { id: 'commander', label: 'Commander', icon: <Plus className="w-4 h-4" /> },
+   189→   189→  { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" />, badge: 3 },
+   190→   190→  { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" />, badge: 1 },
+   191→   191→  { id: 'forfaits', label: 'Forfaits', icon: <CreditCard className="w-4 h-4" /> },
+   192→   192→  { id: 'livreurs', label: 'Livreurs', icon: <Bike className="w-4 h-4" /> },
+   193→   193→  { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
+   194→   194→];
+   195→   195→
+   196→   196→function Sidebar({ current, onNavigate, open, onClose }: { current: View; onNavigate: (v: View) => void; open: boolean; onClose: () => void }) {
+   197→   197→  return (
+   198→   198→    <>
+   199→   199→      {open && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />}
+   200→   200→      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-card border-r flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+   201→   201→        {/* Logo */}
+   202→   202→        <div className="p-5 border-b">
+   203→   203→          <div className="flex items-center justify-between">
+   204→   204→            <div className="flex items-center gap-3">
+   205→   205→              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+   206→   206→                <Bike className="w-5 h-5 text-primary-foreground" />
+   207→   207→              </div>
+   208→   208→              <div>
+   209→   209→                <h1 className="font-bold text-sm leading-tight">CoursierB2B</h1>
+   210→   210→                <p className="text-[10px] text-muted-foreground">Pointe-Noire</p>
+   211→   211→              </div>
+   212→   212→            </div>
+   213→   213→            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={onClose}>
+   214→   214→              <X className="w-4 h-4" />
+   215→   215→            </Button>
+   216→   216→          </div>
+   217→   217→        </div>
+   218→   218→
+   219→   219→        {/* User Info */}
+   220→   220→        <div className="p-4 border-b">
+   221→   221→          <div className="flex items-center gap-3">
+   222→   222→            <Avatar className="w-9 h-9">
+   223→   223→              <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">BGF</AvatarFallback>
+   224→   224→            </Avatar>
+   225→   225→            <div className="flex-1 min-w-0">
+   226→   226→              <p className="text-sm font-semibold truncate">BGFI Bank Congo</p>
+   227→   227→              <p className="text-[11px] text-muted-foreground">Pack Business</p>
+   228→   228→            </div>
+   229→   229→            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">Actif</Badge>
+   230→   230→          </div>
+   231→   231→        </div>
+   232→   232→
+   233→   233→        {/* Nav Items */}
+   234→   234→        <ScrollArea className="flex-1 py-3">
+   235→   235→          <nav className="px-3 space-y-1">
+   236→   236→            {navItems.map(item => (
+   237→   237→              <button
+   238→   238→                key={item.id}
+   239→   239→                onClick={() => { onNavigate(item.id); onClose(); }}
+   240→   240→                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${current === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+   241→   241→              >
+   242→   242→                {item.icon}
+   243→   243→                <span className="flex-1 text-left">{item.label}</span>
+   244→   244→                {item.badge && (
+   245→   245→                  <span className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${current === item.id ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>
+   246→   246→                    {item.badge}
+   247→   247→                  </span>
+   248→   248→                )}
+   249→   249→              </button>
+   250→   250→            ))}
+   251→   251→          </nav>
+   252→   252→        </ScrollArea>
+   253→   253→
+   254→   254→        {/* Footer */}
+   255→   255→        <div className="p-4 border-t">
+   256→   256→          <div className="bg-gradient-to-r from-primary/5 to-emerald-50 rounded-lg p-3">
+   257→   257→            <div className="flex items-center gap-2 mb-1.5">
+   258→   258→              <MessageCircle className="w-3.5 h-3.5 text-primary" />
+   259→   259→              <span className="text-xs font-semibold">WhatsApp Business</span>
+   260→   260→            </div>
+   261→   261→            <p className="text-[11px] text-muted-foreground leading-relaxed">Commandez aussi via WhatsApp pour plus de rapidite.</p>
+   262→   262→            <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs gap-1.5">
+   263→   263→              <MessageCircle className="w-3 h-3" /> Ouvrir WhatsApp
+   264→   264→            </Button>
+   265→   265→          </div>
+   266→   266→        </div>
+   267→   267→      </aside>
+   268→   268→    </>
+   269→   269→  );
+   270→   270→}
+   271→   271→
+   272→   272→// ============================================================
+   273→   273→// VIEWS
+   274→   274→// ============================================================
+   275→   275→
+   276→   276→function DashboardView() {
+   277→   277→  const activeDeliveries = deliveries.filter(d => d.client === 'BGFI Bank Congo' && !['livre', 'annulee'].includes(d.status));
+   278→   278→  const completedToday = deliveries.filter(d => d.client === 'BGFI Bank Congo' && d.status === 'livre').length;
+   279→   279→  const monthlyCourses = 28;
+   280→   280→  const planLimit = 30;
+   281→   281→  const planUsage = Math.round((monthlyCourses / planLimit) * 100);
+   282→   282→
+   283→   283→  return (
+   284→   284→    <div className="space-y-6">
+   285→   285→      {/* Welcome Banner */}
+   286→   286→      <Card className="bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground border-0 overflow-hidden relative">
+   287→   287→        <CardContent className="p-6 relative z-10">
+   288→   288→          <div className="flex items-start justify-between">
+   289→   289→            <div>
+   290→   290→              <p className="text-sm opacity-80">Bienvenue,</p>
+   291→   291→              <h2 className="text-2xl font-bold mt-1">BGFI Bank Congo</h2>
+   292→   292→              <p className="text-sm opacity-80 mt-2">Pack Business - 28 / 30 courses ce mois</p>
+   293→   293→              <div className="flex items-center gap-2 mt-3">
+   294→   294→                <div className="h-2 w-40 bg-white/20 rounded-full overflow-hidden">
+   295→   295→                  <div className="h-full bg-white rounded-full" style={{ width: `${planUsage}%` }} />
+   296→   296→                </div>
+   297→   297→                <span className="text-xs font-medium">{planUsage}%</span>
+   298→   298→              </div>
+   299→   299→            </div>
+   300→   300→            <div className="text-right hidden sm:block">
+   301→   301→              <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">Pack Business</Badge>
+   302→   302→              <p className="text-xs opacity-70 mt-2">180 000 FCFA / mois</p>
+   303→   303→            </div>
+   304→   304→          </div>
+   305→   305→        </CardContent>
+   306→   306→        <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-white/5" />
+   307→   307→        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/5" />
+   308→   308→      </Card>
+   309→   309→
+   310→   310→      {/* Stats Grid */}
+   311→   311→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   312→   312→        <StatCard title="Courses actives" value={String(activeDeliveries.length)} subtitle="En cours maintenant" icon={<Package className="w-5 h-5" />} />
+   313→   313→        <StatCard title="Livrees aujourd'hui" value={String(completedToday)} subtitle="Dont 1 express" icon={<CheckCircle2 className="w-5 h-5" />} trend="+12%" trendUp />
+   314→   314→        <StatCard title="Temps moyen" value="18 min" subtitle="Prise en charge" icon={<Timer className="w-5 h-5" />} trend="-3 min" trendUp />
+   315→   315→        <StatCard title="Ce mois" value={`${monthlyCourses}/${planLimit}`} subtitle="Courses utilisees" icon={<BarChart3 className="w-5 h-5" />} />
+   316→   316→      </div>
+   317→   317→
+   318→   318→      <div className="grid lg:grid-cols-3 gap-6">
+   319→   319→        {/* Active Deliveries */}
+   320→   320→        <Card className="lg:col-span-2">
+   321→   321→          <CardHeader className="pb-3">
+   322→   322→            <div className="flex items-center justify-between">
+   323→   323→              <CardTitle className="text-base font-semibold">Courses en cours</CardTitle>
+   324→   324→              <Button variant="outline" size="sm" className="gap-1.5">
+   325→   325→                <Eye className="w-3.5 h-3.5" /> Voir tout
+   326→   326→              </Button>
+   327→   327→            </div>
+   328→   328→          </CardHeader>
+   329→   329→          <CardContent className="space-y-3">
+   330→   330→            {activeDeliveries.map(d => (
+   331→   331→              <div key={d.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+   332→   332→                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   333→   333→                  {d.type === 'express' ? <Zap className="w-5 h-5 text-amber-600" /> : <Package className="w-5 h-5 text-primary" />}
+   334→   334→                </div>
+   335→   335→                <div className="flex-1 min-w-0">
+   336→   336→                  <div className="flex items-center gap-2">
+   337→   337→                    <span className="text-sm font-semibold">{d.reference}</span>
+   338→   338→                    <StatusBadge status={d.status} />
+   339→   339→                    {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+   340→   340→                  </div>
+   341→   341→                  <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+   342→   342→                    <MapPin className="w-3 h-3 shrink-0" />
+   343→   343→                    <span className="truncate">{d.pickup}</span>
+   344→   344→                    <ChevronRight className="w-3 h-3 shrink-0" />
+   345→   345→                    <span className="truncate">{d.dropoff}</span>
+   346→   346→                  </div>
+   347→   347→                </div>
+   348→   348→                <div className="text-right shrink-0">
+   349→   349→                  <p className="text-sm font-semibold">{d.price.toLocaleString()} <span className="text-[10px] text-muted-foreground">FCFA</span></p>
+   350→   350→                  {d.livreur && <p className="text-[10px] text-muted-foreground mt-0.5">{d.livreur}</p>}
+   351→   351→                </div>
+   352→   352→              </div>
+   353→   353→            ))}
+   354→   354→            {activeDeliveries.length === 0 && (
+   355→   355→              <div className="text-center py-8 text-muted-foreground">
+   356→   356→                <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+   357→   357→                <p className="text-sm">Aucune course en cours</p>
+   358→   358→              </div>
+   359→   359→            )}
+   360→   360→          </CardContent>
+   361→   361→        </Card>
+   362→   362→
+   363→   363→        {/* Live Tracking Card */}
+   364→   364→        <Card>
+   365→   365→          <CardHeader className="pb-3">
+   366→   366→            <CardTitle className="text-base font-semibold">Suivi en direct</CardTitle>
+   367→   367→            <CardDescription>CMD-20260730-001 - Express</CardDescription>
+   368→   368→          </CardHeader>
+   369→   369→          <CardContent className="space-y-4">
+   370→   370→            <MiniMap />
+   371→   371→            <div className="space-y-2.5">
+   372→   372→              <div className="flex items-center gap-2.5">
+   373→   373→                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+   374→   374→                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+   375→   375→                </div>
+   376→   376→                <div className="flex-1">
+   377→   377→                  <p className="text-xs font-medium">Commande prise</p>
+   378→   378→                  <p className="text-[10px] text-muted-foreground">08:15</p>
+   379→   379→                </div>
+   380→   380→              </div>
+   381→   381→              <div className="flex items-center gap-2.5">
+   382→   382→                <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
+   383→   383→                  <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+   384→   384→                </div>
+   385→   385→                <div className="flex-1">
+   386→   386→                  <p className="text-xs font-medium">Pris en charge</p>
+   387→   387→                  <p className="text-[10px] text-muted-foreground">08:22 - Mouamba P.</p>
+   388→   388→                </div>
+   389→   389→              </div>
+   390→   390→              <div className="flex items-center gap-2.5">
+   391→   391→                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center animate-pulse">
+   392→   392→                  <Navigation className="w-3.5 h-3.5 text-white" />
+   393→   393→                </div>
+   394→   394→                <div className="flex-1">
+   395→   395→                  <p className="text-xs font-semibold text-primary">En livraison...</p>
+   396→   396→                  <p className="text-[10px] text-muted-foreground">Arrivee estimee: 08:48</p>
+   397→   397→                </div>
+   398→   398→              </div>
+   399→   399→              <div className="flex items-center gap-2.5 opacity-40">
+   400→   400→                <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center">
+   401→   401→                  <Circle className="w-3.5 h-3.5" />
+   402→   402→                </div>
+   403→   403→                <div className="flex-1">
+   404→   404→                  <p className="text-xs font-medium">Livree</p>
+   405→   405→                </div>
+   406→   406→              </div>
+   407→   407→            </div>
+   408→   408→            <Separator />
+   409→   409→            <div className="flex items-center justify-between text-xs">
+   410→   410→              <span className="text-muted-foreground">Livreur</span>
+   411→   411→              <div className="flex items-center gap-1.5">
+   412→   412→                <Avatar className="w-5 h-5"><AvatarFallback className="text-[9px] bg-primary/10 text-primary">MP</AvatarFallback></Avatar>
+   413→   413→                <span className="font-medium">Mouamba P.</span>
+   414→   414→                <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+   415→   415→                <span className="text-muted-foreground">4.8</span>
+   416→   416→              </div>
+   417→   417→            </div>
+   418→   418→            <Button className="w-full gap-2" size="sm">
+   419→   419→              <Phone className="w-3.5 h-3.5" /> Contacter le livreur
+   420→   420→            </Button>
+   421→   421→          </CardContent>
+   422→   422→        </Card>
+   423→   423→      </div>
+   424→   424→    </div>
+   425→   425→  );
+   426→   426→}
+   427→   427→
+   428→   428→function CommanderView() {
+   429→   429→  const [orderType, setOrderType] = useState('standard');
+   430→   430→  const [submitted, setSubmitted] = useState(false);
+   431→   431→
+   432→   432→  if (submitted) {
+   433→   433→    return (
+   434→   434→      <div className="max-w-lg mx-auto text-center space-y-6 py-12">
+   435→   435→        <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+   436→   436→          <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+   437→   437→        </div>
+   438→   438→        <h2 className="text-2xl font-bold">Course creee avec succes !</h2>
+   439→   439→        <p className="text-muted-foreground">Votre commande CMD-20260730-007 a ete enregistree. Un livreur vous sera assigne dans les plus brefs delais.</p>
+   440→   440→        <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
+   441→   441→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Reference</span><span className="font-semibold">CMD-20260730-007</span></div>
+   442→   442→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Type</span><span className="font-semibold">Express</span></div>
+   443→   443→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tarif</span><span className="font-semibold text-primary">3 500 FCFA</span></div>
+   444→   444→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Statut</span><StatusBadge status="en_attente" /></div>
+   445→   445→        </div>
+   446→   446→        <div className="flex gap-3 justify-center">
+   447→   447→          <Button variant="outline" onClick={() => setSubmitted(false)}>Nouvelle course</Button>
+   448→   448→          <Button>Suivre la course</Button>
+   449→   449→        </div>
+   450→   450→      </div>
+   451→   451→    );
+   452→   452→  }
+   453→   453→
+   454→   454→  return (
+   455→   455→    <div className="max-w-2xl mx-auto space-y-6">
+   456→   456→      <div>
+   457→   457→        <h2 className="text-xl font-bold">Nouvelle course</h2>
+   458→   458→        <p className="text-sm text-muted-foreground mt-1">Creez une demande de livraison en quelques clics</p>
+   459→   459→      </div>
+   460→   460→
+   461→   461→      <Card>
+   462→   462→        <CardHeader>
+   463→   463→          <CardTitle className="text-base">Type de course</CardTitle>
+   464→   464→        </CardHeader>
+   465→   465→        <CardContent>
+   466→   466→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+   467→   467→            {[
+   468→   468→              { value: 'standard', label: 'Standard', price: '2 500 FCFA', desc: 'Intra-muros, delai normal', icon: <Package className="w-5 h-5" /> },
+   469→   469→              { value: 'express', label: 'Express', price: '3 500 FCFA', desc: 'Prise en charge prioritaire', icon: <Zap className="w-5 h-5" /> },
+   470→   470→              { value: 'inter-arrondissement', label: 'Inter-arrond.', price: '3 500+', desc: 'Au-dela de 8 km', icon: <Route className="w-5 h-5" /> },
+   471→   471→            ].map(t => (
+   472→   472→              <button key={t.value} onClick={() => setOrderType(t.value)} className={`p-4 rounded-xl border-2 text-left transition-all ${orderType === t.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/30 hover:bg-muted/50'}`}>
+   473→   473→                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${orderType === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{t.icon}</div>
+   474→   474→                <p className="font-semibold text-sm">{t.label}</p>
+   475→   475→                <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+   476→   476→                <p className="font-bold text-sm mt-2 text-primary">{t.price}</p>
+   477→   477→              </button>
+   478→   478→            ))}
+   479→   479→          </div>
+   480→   480→        </CardContent>
+   481→   481→      </Card>
+   482→   482→
+   483→   483→      <Card>
+   484→   484→        <CardHeader>
+   485→   485→          <CardTitle className="text-base">Details de la course</CardTitle>
+   486→   486→        </CardHeader>
+   487→   487→        <CardContent className="space-y-4">
+   488→   488→          <div className="grid sm:grid-cols-2 gap-4">
+   489→   489→            <div className="space-y-2">
+   490→   490→              <label className="text-sm font-medium">Adresse de depart</label>
+   491→   491→              <div className="relative">
+   492→   492→                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+   493→   493→                <Input placeholder="Ex: Bd Charles de Gaulle, Centre-ville" className="pl-9" />
+   494→   494→              </div>
+   495→   495→            </div>
+   496→   496→            <div className="space-y-2">
+   497→   497→              <label className="text-sm font-medium">Adresse de livraison</label>
+   498→   498→              <div className="relative">
+   499→   499→                <MapPinned className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+   500→   500→                <Input placeholder="Ex: Zone portuaire, PAPN" className="pl-9" />
+   501→   501→              </div>
+   502→   502→            </div>
+   503→   503→          </div>
+   504→   504→          <div className="grid sm:grid-cols-2 gap-4">
+   505→   505→            <div className="space-y-2">
+   506→   506→              <label className="text-sm font-medium">Destinataire</label>
+   507→   507→              <Input placeholder="Nom du contact" />
+   508→   508→            </div>
+   509→   509→            <div className="space-y-2">
+   510→   510→              <label className="text-sm font-medium">Telephone destinataire</label>
+   511→   511→              <Input placeholder="+242 06 XXX XXXX" />
+   512→   512→            </div>
+   513→   513→          </div>
+   514→   514→          <div className="space-y-2">
+   515→   515→            <label className="text-sm font-medium">Description du pli / colis</label>
+   516→   516→            <Textarea placeholder="Ex: Dossier de credit bancaire, enveloppe confidentielle, 3 cheques..." rows={3} />
+   517→   517→          </div>
+   518→   518→          <div className="grid sm:grid-cols-2 gap-4">
+   519→   519→            <div className="space-y-2">
+   520→   520→              <label className="text-sm font-medium">Priorite</label>
+   521→   521→              <Select defaultValue="normale">
+   522→   522→                <SelectTrigger><SelectValue /></SelectTrigger>
+   523→   523→                <SelectContent>
+   524→   524→                  <SelectItem value="normale">Normale</SelectItem>
+   525→   525→                  <SelectItem value="haute">Haute</SelectItem>
+   526→   526→                  <SelectItem value="urgente">Urgente (banques, urgences)</SelectItem>
+   527→   527→                </SelectContent>
+   528→   528→              </Select>
+   529→   529→            </div>
+   530→   530→            <div className="space-y-2">
+   531→   531→              <label className="text-sm font-medium">Mode de paiement</label>
+   532→   532→              <Select defaultValue="forfait">
+   533→   533→                <SelectTrigger><SelectValue /></SelectTrigger>
+   534→   534→                <SelectContent>
+   535→   535→                  <SelectItem value="forfait">Inclus dans le forfait</SelectItem>
+   536→   536→                  <SelectItem value="mobile_money">Mobile Money (Airtel/Moov)</SelectItem>
+   537→   537→                  <SelectItem value="virement">Virement bancaire</SelectItem>
+   538→   538→                </SelectContent>
+   539→   539→              </Select>
+   540→   540→            </div>
+   541→   541→          </div>
+   542→   542→          <div className="space-y-2">
+   543→   543→            <label className="text-sm font-medium">Instructions supplementaires</label>
+   544→   544→            <Textarea placeholder="Ex: Appeler avant livraison, demander M. Okombi au bureau 204..." rows={2} />
+   545→   545→          </div>
+   546→   546→        </CardContent>
+   547→   547→      </Card>
+   548→   548→
+   549→   549→      {/* Summary */}
+   550→   550→      <Card className="bg-muted/30">
+   551→   551→        <CardContent className="p-5">
+   552→   552→          <h3 className="font-semibold text-sm mb-3">Resume de la commande</h3>
+   553→   553→          <div className="space-y-2 text-sm">
+   554→   554→            <div className="flex justify-between"><span className="text-muted-foreground">Type de course</span><span className="font-medium capitalize">{orderType === 'inter-arrondissement' ? 'Inter-arrondissements' : orderType}</span></div>
+   555→   555→            <div className="flex justify-between"><span className="text-muted-foreground">Tarif</span><span className="font-bold text-primary">{orderType === 'express' ? '3 500' : orderType === 'standard' ? '2 500' : '3 500+'} FCFA</span></div>
+   556→   556→            <div className="flex justify-between"><span className="text-muted-foreground">Delai estime</span><span className="font-medium">{orderType === 'express' ? '< 1 heure' : '1-2 heures'}</span></div>
+   557→   557→          </div>
+   558→   558→          <Button className="w-full mt-4 gap-2" size="lg" onClick={() => setSubmitted(true)}>
+   559→   559→            <Send className="w-4 h-4" /> Confirmer la commande
+   560→   560→          </Button>
+   561→   561→        </CardContent>
+   562→   562→      </Card>
+   563→   563→    </div>
+   564→   564→  );
+   565→   565→}
+   566→   566→
+   567→   567→function SuiviView() {
+   568→   568→  const [filter, setFilter] = useState('tous');
+   569→   569→  const clientDeliveries = deliveries.filter(d => d.client === 'BGFI Bank Congo');
+   570→   570→  const filtered = filter === 'tous' ? clientDeliveries : clientDeliveries.filter(d => d.status === filter);
+   571→   571→
+   572→   572→  return (
+   573→   573→    <div className="space-y-6">
+   574→   574→      <div className="flex items-center justify-between">
+   575→   575→        <div>
+   576→   576→          <h2 className="text-xl font-bold">Suivi des courses</h2>
+   577→   577→          <p className="text-sm text-muted-foreground mt-1">Historique et suivi en temps reel de vos livraisons</p>
+   578→   578→        </div>
+   579→   579→      </div>
+   580→   580→
+   581→   581→      {/* Filters */}
+   582→   582→      <div className="flex flex-wrap gap-2">
+   583→   583→        {['tous', 'en_attente', 'prise_en_charge', 'en_course', 'livre'].map(f => (
+   584→   584→          <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm" onClick={() => setFilter(f)} className="text-xs">
+   585→   585→            {f === 'tous' ? 'Toutes' : (statusConfig[f]?.label || f)}
+   586→   586→            {f === 'tous' && <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{clientDeliveries.length}</Badge>}
+   587→   587→          </Button>
+   588→   588→        ))}
+   589→   589→      </div>
+   590→   590→
+   591→   591→      {/* Delivery List */}
+   592→   592→      <div className="space-y-3">
+   593→   593→        {filtered.map(d => (
+   594→   594→          <Card key={d.id} className="hover:shadow-md transition-shadow cursor-pointer">
+   595→   595→            <CardContent className="p-4">
+   596→   596→              <div className="flex items-start gap-4">
+   597→   597→                <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${d.type === 'express' ? 'bg-amber-100 text-amber-700' : d.status === 'livre' ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/10 text-primary'}`}>
+   598→   598→                  {d.status === 'livre' ? <CheckCircle2 className="w-5 h-5" /> : d.type === 'express' ? <Zap className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+   599→   599→                </div>
+   600→   600→                <div className="flex-1 min-w-0">
+   601→   601→                  <div className="flex items-center gap-2 flex-wrap">
+   602→   602→                    <span className="text-sm font-bold">{d.reference}</span>
+   603→   603→                    <StatusBadge status={d.status} />
+   604→   604→                    {d.type === 'express' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1"><Zap className="w-2.5 h-2.5" /> Express</Badge>}
+   605→   605→                    {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+   606→   606→                  </div>
+   607→   607→                  <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+   608→   608→                    <MapPin className="w-3 h-3 shrink-0" />
+   609→   609→                    <span className="truncate">{d.pickup}</span>
+   610→   610→                    <ChevronRight className="w-3 h-3 shrink-0" />
+   611→   611→                    <span className="truncate">{d.dropoff}</span>
+   612→   612→                  </div>
+   613→   613→                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+   614→   614→                    <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {d.createdAt}</span>
+   615→   615→                    {d.livreur && <span className="flex items-center gap-1"><Bike className="w-3 h-3" /> {d.livreur}</span>}
+   616→   616→                    <span className="font-semibold text-foreground">{d.price.toLocaleString()} FCFA</span>
+   617→   617→                  </div>
+   618→   618→                </div>
+   619→   619→                <Button variant="ghost" size="icon" className="shrink-0">
+   620→   620→                  <ChevronRight className="w-4 h-4" />
+   621→   621→                </Button>
+   622→   622→              </div>
+   623→   623→              {d.status === 'en_course' && (
+   624→   624→                <div className="mt-3 pt-3 border-t">
+   625→   625→                  <div className="flex items-center gap-2">
+   626→   626→                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+   627→   627→                    <span className="text-xs font-medium text-primary">En livraison - Suivi GPS actif</span>
+   628→   628→                    <span className="text-[10px] text-muted-foreground ml-auto">Arrivee estimee: 08:48</span>
+   629→   629→                  </div>
+   630→   630→                  <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+   631→   631→                    <div className="h-full bg-primary rounded-full" style={{ width: '65%' }} />
+   632→   632→                  </div>
+   633→   633→                </div>
+   634→   634→              )}
+   635→   635→            </CardContent>
+   636→   636→          </Card>
+   637→   637→        ))}
+   638→   638→        {filtered.length === 0 && (
+   639→   639→          <div className="text-center py-12 text-muted-foreground">
+   640→   640→            <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
+   641→   641→            <p>Aucune course trouvee pour ce filtre</p>
+   642→   642→          </div>
+   643→   643→        )}
+   644→   644→      </div>
+   645→   645→    </div>
+   646→   646→  );
+   647→   647→}
+   648→   648→
+   649→   649→function FacturationView() {
+   650→   650→  const totalAmount = invoices.filter(i => i.status !== 'payee').reduce((s, i) => s + i.amount, 0);
+   651→   651→  const paidAmount = invoices.filter(i => i.status === 'payee').reduce((s, i) => s + i.amount, 0);
+   652→   652→
+   653→   653→  return (
+   654→   654→    <div className="space-y-6">
+   655→   655→      <div>
+   656→   656→        <h2 className="text-xl font-bold">Facturation</h2>
+   657→   657→        <p className="text-sm text-muted-foreground mt-1">Factures mensuelles consolidees conformes TVA</p>
+   658→   658→      </div>
+   659→   659→
+   660→   660→      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+   661→   661→        <StatCard title="En attente" value={`${(totalAmount / 1000).toFixed(0)} k`} subtitle="FCFA a regler" icon={<Clock className="w-5 h-5" />} />
+   662→   662→        <StatCard title="Payees ce mois" value={`${(paidAmount / 1000).toFixed(0)} k`} subtitle="FCFA regles" icon={<CheckCircle2 className="w-5 h-5" />} trend="+8%" trendUp />
+   663→   663→        <StatCard title="Total Juillet" value={`${((totalAmount + paidAmount) / 1000).toFixed(0)} k`} subtitle="FCFA" icon={<Receipt className="w-5 h-5" />} />
+   664→   664→      </div>
+   665→   665→
+   666→   666→      {/* Billing Note */}
+   667→   667→      <Card className="bg-emerald-50 border-emerald-200">
+   668→   668→        <CardContent className="p-4 flex items-start gap-3">
+   669→   669→          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+   670→   670→            <FileCheck2 className="w-4 h-4 text-emerald-700" />
+   671→   671→          </div>
+   672→   672→          <div>
+   673→   673→            <p className="text-sm font-semibold text-emerald-800">Facturation conforme TVA</p>
+   674→   674→            <p className="text-xs text-emerald-700 mt-0.5">Toutes vos factures incluent le numero RCCM, la TVA calculee separement et sont deductible fiscalement. Telechargeable en PDF a tout moment.</p>
+   675→   675→          </div>
+   676→   676→        </CardContent>
+   677→   677→      </Card>
+   678→   678→
+   679→   679→      {/* Invoice List */}
+   680→   680→      <Card>
+   681→   681→        <CardHeader className="pb-3">
+   682→   682→          <div className="flex items-center justify-between">
+   683→   683→            <CardTitle className="text-base font-semibold">Historique des factures</CardTitle>
+   684→   684→            <Button variant="outline" size="sm" className="gap-1.5"><Filter className="w-3.5 h-3.5" /> Filtrer</Button>
+   685→   685→          </div>
+   686→   686→        </CardHeader>
+   687→   687→        <CardContent>
+   688→   688→          <div className="space-y-3">
+   689→   689→            {invoices.map(inv => (
+   690→   690→              <div key={inv.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+   691→   691→                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   692→   692→                  <FileText className="w-5 h-5 text-primary" />
+   693→   693→                </div>
+   694→   694→                <div className="flex-1 min-w-0">
+   695→   695→                  <div className="flex items-center gap-2">
+   696→   696→                    <span className="text-sm font-semibold">{inv.id}</span>
+   697→   697→                    <StatusBadge status={inv.status} />
+   698→   698→                  </div>
+   699→   699→                  <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+   700→   700→                    <span>{inv.period}</span>
+   701→   701→                    <span>-</span>
+   702→   702→                    <span>{inv.courses} courses</span>
+   703→   703→                    {inv.paidDate && <span>- Payee le {inv.paidDate}</span>}
+   704→   704→                  </div>
+   705→   705→                </div>
+   706→   706→                <div className="text-right shrink-0">
+   707→   707→                  <p className="text-sm font-bold">{inv.amount.toLocaleString()} <span className="text-[10px] text-muted-foreground">FCFA</span></p>
+   708→   708→                  <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 mt-1 text-primary">
+   709→   709→                    <Download className="w-3 h-3" /> PDF
+   710→   710→                  </Button>
+   711→   711→                </div>
+   712→   712→              </div>
+   713→   713→            ))}
+   714→   714→          </div>
+   715→   715→        </CardContent>
+   716→   716→      </Card>
+   717→   717→    </div>
+   718→   718→  );
+   719→   719→}
+   720→   720→
+   721→   721→function ForfaitsView() {
+   722→   722→  const plans = [
+   723→   723→    {
+   724→   724→      name: 'Pack Decouverte',
+   725→   725→      price: '75 000',
+   726→   726→      target: 'PME < 10 courses/mois',
+   727→   727→      features: ['10 courses incluses/mois', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Support WhatsApp', 'Paiement Mobile Money'],
+   728→   728→      highlight: false,
+   729→   729→      color: 'border-border',
+   730→   730→    },
+   731→   731→    {
+   732→   732→      name: 'Pack Business',
+   733→   733→      price: '180 000',
+   734→   734→      target: 'Banques, PME 10-30 courses/mois',
+   735→   735→      features: ['30 courses incluses/mois', 'SLA prioritaire (prise en charge < 30 min)', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Gestionnaire de compte dedie', 'Reporting mensuel detaille', 'Support prioritaire'],
+   736→   736→      highlight: true,
+   737→   737→      color: 'border-primary',
+   738→   738→    },
+   739→   739→    {
+   740→   740→      name: 'Pack Premium',
+   741→   741→      price: '350 000',
+   742→   742→      target: 'Grands comptes, +30 courses/mois',
+   743→   743→      features: ['60 courses incluses/mois', 'Coursier dedie assigne', 'SLA garanti (prise en charge < 15 min)', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Gestionnaire de compte senior', 'Reporting hebdomadaire', 'Support 24/7', 'Course hors forfait au tarif reduit'],
+   744→   744→      highlight: false,
+   745→   745→      color: 'border-border',
+   746→   746→    },
+   747→   747→  ];
+   748→   748→
+   749→   749→  return (
+   750→   750→    <div className="space-y-6">
+   751→   751→      <div className="text-center max-w-xl mx-auto">
+   752→   752→        <h2 className="text-xl font-bold">Forfaits mensuels</h2>
+   753→   753→        <p className="text-sm text-muted-foreground mt-1">Choisissez le forfait adapte au volume de courses de votre entreprise. Engagement minimum 6 mois.</p>
+   754→   754→      </div>
+   755→   755→
+   756→   756→      <div className="grid md:grid-cols-3 gap-6">
+   757→   757→        {plans.map(plan => (
+   758→   758→          <Card key={plan.name} className={`relative ${plan.highlight ? 'border-2 border-primary shadow-lg scale-[1.02]' : ''} ${plan.color}`}>
+   759→   759→            {plan.highlight && (
+   760→   760→              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+   761→   761→                <Badge className="bg-primary text-primary-foreground px-3">Recommande</Badge>
+   762→   762→              </div>
+   763→   763→            )}
+   764→   764→            <CardHeader className="text-center pb-2 pt-6">
+   765→   765→              <CardTitle className="text-lg">{plan.name}</CardTitle>
+   766→   766→              <CardDescription className="text-xs">{plan.target}</CardDescription>
+   767→   767→            </CardHeader>
+   768→   768→            <CardContent className="text-center space-y-4">
+   769→   769→              <div className="py-2">
+   770→   770→                <span className="text-3xl font-bold">{plan.price}</span>
+   771→   771→                <span className="text-sm text-muted-foreground ml-1">FCFA/mois</span>
+   772→   772→              </div>
+   773→   773→              <Separator />
+   774→   774→              <ul className="space-y-2.5 text-left">
+   775→   775→                {plan.features.map(f => (
+   776→   776→                  <li key={f} className="flex items-start gap-2 text-sm">
+   777→   777→                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+   778→   778→                    <span>{f}</span>
+   779→   779→                  </li>
+   780→   780→                ))}
+   781→   781→              </ul>
+   782→   782→              <Button className={`w-full mt-2 ${plan.highlight ? '' : 'variant-outline'}`} variant={plan.highlight ? 'default' : 'outline'}>
+   783→   783→                {plan.highlight ? 'Votre forfait actuel' : 'Changer de forfait'}
+   784→   784→              </Button>
+   785→   785→            </CardContent>
+   786→   786→          </Card>
+   787→   787→        ))}
+   788→   788→      </div>
+   789→   789→
+   790→   790→      {/* A la carte pricing */}
+   791→   791→      <Card>
+   792→   792→        <CardHeader>
+   793→   793→          <CardTitle className="text-base">Tarification a la demande</CardTitle>
+   794→   794→          <CardDescription>Sans abonnement, payez par course selon le type</CardDescription>
+   795→   795→        </CardHeader>
+   796→   796→        <CardContent>
+   797→   797→          <div className="grid sm:grid-cols-3 gap-4">
+   798→   798→            <div className="p-4 rounded-xl bg-muted/50 text-center">
+   799→   799→              <Package className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+   800→   800→              <p className="font-semibold text-sm">Standard</p>
+   801→   801→              <p className="text-xs text-muted-foreground mt-0.5">Intra-muros</p>
+   802→   802→              <p className="text-lg font-bold mt-2">2 500 <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+   803→   803→            </div>
+   804→   804→            <div className="p-4 rounded-xl bg-amber-50 text-center">
+   805→   805→              <Zap className="w-6 h-6 mx-auto text-amber-600 mb-2" />
+   806→   806→              <p className="font-semibold text-sm">Express</p>
+   807→   807→              <p className="text-xs text-muted-foreground mt-0.5">Delai &lt; 1h, suivi GPS</p>
+   808→   808→              <p className="text-lg font-bold mt-2">3 500 <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+   809→   809→            </div>
+   810→   810→            <div className="p-4 rounded-xl bg-muted/50 text-center">
+   811→   811→              <Route className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+   812→   812→              <p className="font-semibold text-sm">Inter-arrondissements</p>
+   813→   813→              <p className="text-xs text-muted-foreground mt-0.5">Au-dela de 8 km</p>
+   814→   814→              <p className="text-lg font-bold mt-2">3 500+ <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+   815→   815→              <p className="text-[10px] text-muted-foreground">350 FCFA/km supplementaire</p>
+   816→   816→            </div>
+   817→   817→          </div>
+   818→   818→        </CardContent>
+   819→   819→      </Card>
+   820→   820→    </div>
+   821→   821→  );
+   822→   822→}
+   823→   823→
+   824→   824→function LivreursView() {
+   825→   825→  const available = livreurs.filter(l => l.status === 'disponible').length;
+   826→   826→  const inRoute = livreurs.filter(l => l.status === 'en_course').length;
+   827→   827→
+   828→   828→  return (
+   829→   829→    <div className="space-y-6">
+   830→   830→      <div>
+   831→   831→        <h2 className="text-xl font-bold">Equipe livreurs</h2>
+   832→   832→        <p className="text-sm text-muted-foreground mt-1">Flotte en temps reel - {livreurs.length} livreurs actifs</p>
+   833→   833→      </div>
+   834→   834→
+   835→   835→      <div className="grid grid-cols-3 gap-4">
+   836→   836→        <StatCard title="Disponibles" value={String(available)} subtitle="Pret pour une course" icon={<CheckCircle2 className="w-5 h-5" />} />
+   837→   837→        <StatCard title="En course" value={String(inRoute)} subtitle="Livraisons en cours" icon={<Navigation className="w-5 h-5" />} />
+   838→   838→        <StatCard title="Note moyenne" value="4.6" subtitle="Sur 5 etoiles" icon={<Star className="w-5 h-5" />} />
+   839→   839→      </div>
+   840→   840→
+   841→   841→      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   842→   842→        {livreurs.map(l => (
+   843→   843→          <Card key={l.id} className="hover:shadow-md transition-shadow">
+   844→   844→            <CardContent className="p-5">
+   845→   845→              <div className="flex items-start justify-between">
+   846→   846→                <div className="flex items-center gap-3">
+   847→   847→                  <Avatar className="w-11 h-11">
+   848→   848→                    <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{l.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+   849→   849→                  </Avatar>
+   850→   850→                  <div>
+   851→   851→                    <p className="text-sm font-semibold">{l.name}</p>
+   852→   852→                    <p className="text-xs text-muted-foreground">{l.vehicle}</p>
+   853→   853→                  </div>
+   854→   854→                </div>
+   855→   855→                <StatusBadge status={l.status} />
+   856→   856→              </div>
+   857→   857→              <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+   858→   858→                <div className="bg-muted/50 rounded-lg p-2">
+   859→   859→                  <p className="text-lg font-bold">{l.courses}</p>
+   860→   860→                  <p className="text-[10px] text-muted-foreground">Courses</p>
+   861→   861→                </div>
+   862→   862→                <div className="bg-muted/50 rounded-lg p-2">
+   863→   863→                  <div className="flex items-center justify-center gap-1">
+   864→   864→                    <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+   865→   865→                    <span className="text-lg font-bold">{l.rating}</span>
+   866→   866→                  </div>
+   867→   867→                  <p className="text-[10px] text-muted-foreground">Note</p>
+   868→   868→                </div>
+   869→   869→              </div>
+   870→   870→              <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+   871→   871→                <MapPin className="w-3 h-3" />
+   872→   872→                <span>Zone: {l.zone}</span>
+   873→   873→              </div>
+   874→   874→              <Separator className="my-3" />
+   875→   875→              <div className="flex gap-2">
+   876→   876→                <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-8 text-xs">
+   877→   877→                  <Phone className="w-3 h-3" /> Appeler
+   878→   878→                </Button>
+   879→   879→                <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-8 text-xs">
+   880→   880→                  <MessageCircle className="w-3 h-3" /> WhatsApp
+   881→   881→                </Button>
+   882→   882→              </div>
+   883→   883→            </CardContent>
+   884→   884→          </Card>
+   885→   885→        ))}
+   886→   886→      </div>
+   887→   887→    </div>
+   888→   888→  );
+   889→   889→}
+   890→   890→
+   891→   891→function ParametresView() {
+   892→   892→  return (
+   893→   893→    <div className="max-w-2xl mx-auto space-y-6">
+   894→   894→      <div>
+   895→   895→        <h2 className="text-xl font-bold">Parametres</h2>
+   896→   896→        <p className="text-sm text-muted-foreground mt-1">Gerez les parametres de votre compte entreprise</p>
+   897→   897→      </div>
+   898→   898→
+   899→   899→      <Card>
+   900→   900→        <CardHeader>
+   901→   901→          <CardTitle className="text-base">Informations entreprise</CardTitle>
+   902→   902→        </CardHeader>
+   903→   903→        <CardContent className="space-y-4">
+   904→   904→          <div className="grid sm:grid-cols-2 gap-4">
+   905→   905→            <div className="space-y-2">
+   906→   906→              <label className="text-sm font-medium">Raison sociale</label>
+   907→   907→              <Input defaultValue="BGFI Bank Congo" />
+   908→   908→            </div>
+   909→   909→            <div className="space-y-2">
+   910→   910→              <label className="text-sm font-medium">NIF</label>
+   911→   911→              <Input defaultValue="NIF-2026-XXXX" />
+   912→   912→            </div>
+   913→   913→          </div>
+   914→   914→          <div className="grid sm:grid-cols-2 gap-4">
+   915→   915→            <div className="space-y-2">
+   916→   916→              <label className="text-sm font-medium">RCCM</label>
+   917→   917→              <Input defaultValue="RCCM-PN-XXXXX" />
+   918→   918→            </div>
+   919→   919→            <div className="space-y-2">
+   920→   920→              <label className="text-sm font-medium">Secteur</label>
+   921→   921→              <Input defaultValue="Etablissement bancaire" />
+   922→   922→            </div>
+   923→   923→          </div>
+   924→   924→          <div className="grid sm:grid-cols-2 gap-4">
+   925→   925→            <div className="space-y-2">
+   926→   926→              <label className="text-sm font-medium">Email facturation</label>
+   927→   927→              <Input defaultValue="facturation@bgficongo.cg" />
+   928→   928→            </div>
+   929→   929→            <div className="space-y-2">
+   930→   930→              <label className="text-sm font-medium">Telephone principal</label>
+   931→   931→              <Input defaultValue="+242 06 500 0000" />
+   932→   932→            </div>
+   933→   933→          </div>
+   934→   934→          <div className="space-y-2">
+   935→   935→            <label className="text-sm font-medium">Adresse siege</label>
+   936→   936→            <Input defaultValue="Bd Charles de Gaulle, Centre-ville, Pointe-Noire" />
+   937→   937→          </div>
+   938→   938→          <Button className="gap-2">Sauvegarder</Button>
+   939→   939→        </CardContent>
+   940→   940→      </Card>
+   941→   941→
+   942→   942→      <Card>
+   943→   943→        <CardHeader>
+   944→   944→          <CardTitle className="text-base">Notifications</CardTitle>
+   945→   945→        </CardHeader>
+   946→   946→        <CardContent className="space-y-4">
+   947→   947→          {[
+   948→   948→            { label: 'Notification de prise en charge', desc: 'Recevoir une alerte quand un livreur est assigne', defaultChecked: true },
+   949→   949→            { label: 'Notification de livraison', desc: 'Recevoir une alerte quand le pli est livre', defaultChecked: true },
+   950→   950→            { label: 'Rapport hebdomadaire par email', desc: 'Recapitulatif des courses de la semaine', defaultChecked: false },
+   951→   951→            { label: 'Alerte facture disponible', desc: 'Notification quand la facture mensuelle est prete', defaultChecked: true },
+   952→   952→          ].map(n => (
+   953→   953→            <div key={n.label} className="flex items-center justify-between py-1">
+   954→   954→              <div>
+   955→   955→                <p className="text-sm font-medium">{n.label}</p>
+   956→   956→                <p className="text-xs text-muted-foreground">{n.desc}</p>
+   957→   957→              </div>
+   958→   958→              <input type="checkbox" defaultChecked={n.defaultChecked} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+   959→   959→            </div>
+   960→   960→          ))}
+   961→   961→        </CardContent>
+   962→   962→      </Card>
+   963→   963→
+   964→   964→      <Card className="border-red-200">
+   965→   965→        <CardHeader>
+   966→   966→          <CardTitle className="text-base text-red-600">Zone dangereuse</CardTitle>
+   967→   967→        </CardHeader>
+   968→   968→        <CardContent className="space-y-3">
+   969→   969→          <p className="text-sm text-muted-foreground">Ces actions sont irreversibles.</p>
+   970→   970→          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 gap-2">
+   971→   971→            <LogOut className="w-4 h-4" /> Deconnecter le compte
+   972→   972→          </Button>
+   973→   973→        </CardContent>
+   974→   974→      </Card>
+   975→   975→    </div>
+   976→   976→  );
+   977→   977→}
+   978→   978→
+   979→   979→// ============================================================
+   980→   980→// MAIN APP
+   981→   981→// ============================================================
+   982→   982→export default function Home() {
+   983→   983→  const [currentView, setCurrentView] = useState<View>('dashboard');
+   984→   984→  const [sidebarOpen, setSidebarOpen] = useState(false);
+   985→   985→  const [searchOpen, setSearchOpen] = useState(false);
+   986→   986→
+   987→   987→  const viewMap: Record<View, React.ReactNode> = {
+   988→   988→    dashboard: <DashboardView />,
+   989→   989→    commander: <CommanderView />,
+   990→   990→    suivi: <SuiviView />,
+   991→   991→    facturation: <FacturationView />,
+   992→   992→    forfaits: <ForfaitsView />,
+   993→   993→    livreurs: <LivreursView />,
+   994→   994→    parametres: <ParametresView />,
+   995→   995→  };
+   996→   996→
+   997→   997→  const pageTitle: Record<View, string> = {
+   998→   998→    dashboard: 'Tableau de bord',
+   999→   999→    commander: 'Commander une course',
+  1000→  1000→    suivi: 'Suivi des courses',
+  1001→  1001→    facturation: 'Facturation',
+  1002→  1002→    forfaits: 'Forfaits',
+  1003→  1003→    livreurs: 'Livreurs',
+  1004→  1004→    parametres: 'Parametres',
+  1005→  1005→  };
+  1006→  1006→
+  1007→  1007→  return (
+  1008→  1008→    <div className="min-h-screen flex bg-background">
+  1009→  1009→      <Sidebar current={currentView} onNavigate={setCurrentView} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+  1010→  1010→
+  1011→  1011→      <div className="flex-1 flex flex-col min-w-0">
+  1012→  1012→        {/* Top Bar */}
+  1013→  1013→        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b px-4 lg:px-6 h-14 flex items-center gap-4">
+  1014→  1014→          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+  1015→  1015→            <Menu className="w-5 h-5" />
+  1016→  1016→          </Button>
+  1017→  1017→
+  1018→  1018→          <h2 className="font-semibold text-sm hidden sm:block">{pageTitle[currentView]}</h2>
+  1019→  1019→
+  1020→  1020→          <div className="flex-1" />
+  1021→  1021→
+  1022→  1022→          {/* Search */}
+  1023→  1023→          <Button variant="ghost" size="icon" className="relative" onClick={() => setSearchOpen(!searchOpen)}>
+  1024→  1024→            <Search className="w-4 h-4" />
+  1025→  1025→          </Button>
+  1026→  1026→
+  1027→  1027→          {/* Notifications */}
+  1028→  1028→          <Button variant="ghost" size="icon" className="relative">
+  1029→  1029→            <Bell className="w-4 h-4" />
+  1030→  1030→            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
+  1031→  1031→          </Button>
+  1032→  1032→
+  1033→  1033→          {/* Mobile Money */}
+  1034→  1034→          <Badge variant="outline" className="hidden sm:flex gap-1.5 text-xs">
+  1035→  1035→            <Wallet className="w-3 h-3" /> Mobile Money
+  1036→  1036→          </Badge>
+  1037→  1037→        </header>
+  1038→  1038→
+  1039→  1039→        {/* Search Bar (expandable) */}
+  1040→  1040→        {searchOpen && (
+  1041→  1041→          <div className="px-4 lg:px-6 py-3 border-b bg-muted/30">
+  1042→  1042→            <div className="relative max-w-md">
+  1043→  1043→              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+  1044→  1044→              <Input placeholder="Rechercher une course, un client..." className="pl-9" autoFocus />
+  1045→  1045→            </div>
+  1046→  1046→          </div>
+  1047→  1047→        )}
+  1048→  1048→
+  1049→  1049→        {/* Main Content */}
+  1050→  1050→        <main className="flex-1 p-4 lg:p-6 overflow-auto">
+  1051→  1051→          {viewMap[currentView]}
+  1052→  1052→        </main>
+  1053→  1053→
+  1054→  1054→        {/* Footer */}
+  1055→  1055→        <footer className="border-t px-4 lg:px-6 py-3 mt-auto">
+  1056→  1056→          <div className="flex items-center justify-between text-xs text-muted-foreground">
+  1057→  1057→            <p>CoursierB2B Pointe-Noire - Republique du Congo</p>
+  1058→  1058→            <p className="hidden sm:block">RCCM: XXXXX-PN - NIF: XXXXX - TVA: 18,9%</p>
+  1059→  1059→          </div>
+  1060→  1060→        </footer>
+  1061→  1061→      </div>
+  1062→  1062→    </div>
+  1063→  1063→  );
+  1064→  1064→}
+  1065→  1065→
