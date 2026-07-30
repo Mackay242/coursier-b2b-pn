@@ -1,0 +1,578 @@
+=== PAGE 1 ===
+/ ÉTUDE DE MARCHÉ · JUILLET 2026
+Coursier B2B
+Pointe-Noire
+Étude de faisabilité et d'opportunité
+pour le lancement d'un service professionnel
+de livraison et de courses en entreprise
+Analyse stratégique du marché de la livraison du dernier kilomètre
+à Pointe-Noire, République du Congo, couvrant l'environnement
+concurrentiel formel et informel, les modèles opérationnels et le
+cadre réglementaire en vigueur.
+Le rapport inclut un questionnaire de sondage terrain destiné aux
+PME, grands comptes, établissements bancaires et
+administrations pour valider le besoin B2B et calibrer l'offre de
+3 9 12 mois
+lancement.
+AXES D'ANALYSE QUESTIONS SONDAGE ROADMAP CIBLE
+RÉPUBLIQUE DU CONGO · POINTE-NOIRE
+Document confidentiel · Usage stratégique
+
+=== PAGE 2 ===
+Étude de faisabilité - Coursier B2B Pointe-Noire République du Congo - Juillet 2026
+SOMMAIRE
+Étude de faisabilité et d'opportunité pour le lancement d'un service de coursier B2B à Pointe-Noire, République du Congo.
+Résumé opérationnel 3
+Contexte économique de Pointe-Noire 4
+Analyse de la concurrence à Pointe-Noire 5
+Catégorie 1 - Acteurs informels (segment dominant) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+Catégorie 2 - Startups et services de livraison émergents . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+Catégorie 3 - Opérateurs logistiques formels internationaux . . . . . . . . . . . . . . . . . . . . . . . . . . . 5
+Catégorie 4 - Coursiers internes des grandes entreprises . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+Tableau comparatif synthétique . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 6
+Fonctionnement administratif et opérationnel des concurrents 7
+Outils de suivi et gestion administrative . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+Modèles opérationnels . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 7
+Cadre réglementaire applicable au Congo-Brazzaville . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 8
+Conception d'un sondage pour les entreprises de Pointe-Noire 10
+Méthodologie du sondage . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+Le questionnaire (9 questions) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 10
+Grille d'analyse des réponses . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 11
+Matrice SWOT du projet 13
+Recommandations stratégiques 14
+1. Zone de lancement prioritaire . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+2. Modèle opérationnel hybride . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+Document confidentiel - Usage stratégique 1
+
+=== PAGE 3 ===
+3. Tarification calibrée . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 14
+4. Stack technologique minimal viable . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+5. Partenariats stratégiques à privilégier . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+6. Roadmap 12 mois . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . 15
+Questionnaire de sondage - Version terrain 17
+
+=== PAGE 4 ===
+SYNTHÈSE EXÉCUTIVE
+Résumé opérationnel
+Le marché de la livraison professionnelle du dernier kilomètre à Pointe-Noire, deuxième ville et poumon
+économique de la République du Congo, présente une opportunité stratégique claire pour le lancement d'un
+service de coursier B2B professionnalisé. L'analyse révèle un secteur profondément fragmenté où coexistent des
+acteurs informels majoritaires (moto-taxis dits bend-skin, coursiers de quartier, transporteurs occasionnels),
+quelques opérateurs formels orientés vers le segment expresse et international (DHL, Bolloré Africa Logistics,
+Maersk), et une absence notable d'offres intermédiaires structurées autour des besoins quotidiens des entreprises
+locales.
+Les PME, établissements bancaires, sociétés pétrolières et administrations de Pointe-Noire mobilisent
+aujourd'hui des solutions bricolées : coursiers internes salariés sous-occupés, recours ponctuel aux
+taxis-communs, appels à des livreurs informels via WhatsApp. Les coûts cachés sont substantiels : temps
+manager perdu en coordination, absence de traçabilité des plis sensibles, facturations non conformes aux
+exigences comptables (TVA, RCCM), risque sécuritaire sur le transport de chèques et de documents juridiques.
+Une offre positionnée sur le triptyque « fiabilité - traçabilité - facturation mensuelle consolidée » répond
+directement à ces points de douleur.
+Les principales constatations issues de l'analyse terrain sont les suivantes : (1) la tarification informelle se situe
+entre 1 500 et 3 000 FCFA la course intra-muros, sans structuration contractuelle ; (2) aucun acteur local ne
+propose actuellement de suivi GPS en temps réel ni de facturation centralisée mensuelle ; (3) le cadre
+réglementaire congolais reste accessible (inscription RCCM, carte professionnelle de transporteur, conformité
+TVA à 18,9 %) sans barrière réglementaire discriminante ; (4) la demande B2B existe de manière latente et se
+concentre géographiquement sur le centre-ville, Tié-Tié, Lumumba et la zone portuaire.
+Recommandation finale
+Le lancement est recommandé selon un modèle hybride : flotte propre restreinte (3 motos + 1 voiture) +
+livreurs indépendants sous contrat, application mobile légère avec tracking WhatsApp, facturation mensuelle
+consolidée. Zone pilote : centre-ville et Arrondissements 1-3. Investment initial estimé : 18-25 millions FCFA.
+Seuil de rentabilité visé : 14-18 mois avec un portefeuille de 35-50 clients B2B actifs.
+
+=== PAGE 5 ===
+MISE EN PERSPECTIVE
+Contexte économique de Pointe-Noire
+Pointe-Noire, capitale économique de la République du Congo, compte environ 1,2 million d'habitants et
+concentre l'essentiel de l'appareil productif du pays. La ville abrite le Port Autonome de Pointe-Noire (PAPN),
+premier port en eau profonde du Golfe de Guinée, le terminal pétrolier de Djeno, les installations de
+TotalEnergies, ENI, Perenco et Wing Wah. Le Chemin de fer Congo-Océan (CFCO) relie la ville à Brazzaville
+(510 km) et constitue le corridor logistique structurant du pays. Cette position de hub régional génère un volume
+quotidien considérable d'échanges documentaires, administratifs et matériels entre les opérateurs.
+Le tissu économique local comprend quatre grandes catégories d'acteurs B2B directement consommateurs de
+services de coursier. Les établissements bancaires et financiers (BGFI Bank Congo, BICEC, Ecobank Congo,
+Société Générale Congo, UBA Congo, Banque Postale) échangent quotidiennement des plis inter-agences, des
+chèques, des dossiers de crédit et des relevés clients. Les sociétés pétrolières et para-pétrolières
+(TotalEnergies E&P; Congo, ENI Congo, Perenco, Murphy Oil, travaillent avec un réseau de sous-traitants et de
+fournisseurs locaux nécessitant des flux constants de documents techniques et contractuels. Les administrations
+publiques (Mairie, Gouverneur du département, Douanes, Impôts, Registre de Commerce) génèrent un flux
+permanent de correspondances officielles. Les PME de services (cabinets d'expertise comptable, études
+juridiques, agences d'intérim, fournisseurs industriels) constituent le segment le plus large.
+L'environnement urbain se caractérise par une congestion croissante du centre-ville aux heures de pointe
+(7h30-9h00, 12h00-13h30, 17h00-19h00), un réseau viaire partiellement asphalté au-delà des axes principaux
+(boulevard Charles de Gaulle, avenue de l'Indépendance, route de Nkossi), et une desserte progressive des
+quartiers périphériques (Ngoyo, Tié-Tié, Lumumba, Arrondissement 6). Cette réalité urbaine crée
+mécaniquement un besoin de service de coursier professionnel capable d'absorber la complexité logistique que
+les entreprises ne peuvent pas internaliser efficacement.
+
+=== PAGE 6 ===
+AXE 1
+Analyse de la concurrence à Pointe-Noire
+Le paysage concurrentiel de la livraison du dernier kilomètre à Pointe-Noire s'organise en quatre catégories
+distinctes, dont les modèles économiques, les standards de service et les couvertures géographiques diffèrent
+profondément. Cette segmentation est essentielle pour identifier le positionnement concurrentiel disponible et
+calibrer l'offre de lancement.
+Catégorie 1 - Acteurs informels (segment dominant)
+Les acteurs informels représentent vraisemblablement plus de 80 % du volume déservi à Pointe-Noire. Ils se
+composent de trois sous-segments. Les moto-taxis « bend-skin », omniprésents dans toute la ville, sont
+sollicités via appel téléphonique direct ou WhatsApp pour des courses ponctuelles. Leur tarification se fait à la
+négociation, généralement entre 1 000 et 2 500 FCFA pour une course intra-muros, et ils acceptent
+occasionnellement de transporter des plis. Les coursiers de quartier, jeunes hommes identifiés localement par
+les commerçants, fonctionnent en prestation ponctuelle rémunérée 2 000-3 500 FCFA la course. Les
+transporteurs occasionnels (taxis-communs, propriétaires de motos personnelles) interviennent en
+complément.
+Forces : réactivité immédiate (délai moyen de prise en charge 10-25 minutes), coût très bas, ancrage social fort
+dans les quartiers, flexibilité horaires (service continu 6h-22h). Faiblesses : aucune traçabilité (aucun reçu,
+aucune preuve de livraison), fiabilité aléatoire (taux de retard estimé 30-40 %, pertes de plis non chiffrées mais
+réelles), absence de contrat et de facturation conforme (refus fréquent de délivrer des reçus fiscaux), couverture
+limitée hors centre-ville, interlocuteur unique non remplaçable en cas d'absence.
+Catégorie 2 - Startups et services de livraison émergents
+Plusieurs initiatives de livraison structurée sont apparues à Pointe-Noire depuis 2020, sous l'impulsion
+d'entrepreneurs locaux et de la diaspora. On citera notamment Yoole (application de commande de courses et
+livraison, présente à Brazzaville et Pointe-Noire), Anka (services logistiques pour e-commerce), ainsi que
+plusieurs opérateurs de taille plus modeste fonctionnant principalement via WhatsApp Business. Ces acteurs
+proposent une tarification au forfait par course (2 500-4 500 FCFA intra-muros) ou par tranches kilométriques
+(1 500 FCFA/km au-delà de 5 km).
+Forces : application mobile de commande, interlocuteur dédié, capacité à délivrer des reçus, image plus
+professionnelle. Faiblesses : faible pénétration B2B (positionnement orienté B2C et e-commerce), infrastructure
+tech limitée (pas de GPS tracking en temps réel pour la majorité), forte dépendance aux livreurs indépendants
+sans contrat formel, qualité de service hétérogène, capitalisation insuffisante pour absorber la croissance, modèle
+de facturation mensuelle consolidée peu développé.
+Catégorie 3 - Opérateurs logistiques formels internationaux
+Les grands noms de la logistique internationale présents à Pointe-Noire incluent DHL Express, Maersk
+Logistics, Bolloré Africa Logistics (devenu CMA CGM), Geodis, SDV et plusieurs transitaires spécialisés.
+Ces opérateurs se concentrent quasi exclusivement sur le segment du transport international (import-export, fret
+
+=== PAGE 7 ===
+maritime, douane) et du transport express intercontinental de documents. Leur tarification est alignée sur les
+standards internationaux : 25 000-65 000 FCFA pour une enveloppe express internationale, tarification au poids
+pour les colis.
+Pour les courses urbaines intra-Pointe-Noire, ces opérateurs ne constituent pas une offre concurrentielle directe :
+ils ne couvrent pas le segment « petite course urbaine B2B récurrente » qui constitue le cœur de cible de notre
+projet. Ils représentent néanmoins une menace indirecte car ils pourraient, à moyen terme, descendre sur ce
+segment si la rentabilité le justifiait. Forces : infrastructure lourde, certifications ISO, couverture mondiale,
+équipe commerciale professionnelle. Faiblesses : coût prohibitif pour les besoins locaux, lourdeur
+administrative, délais urbains peu compétitifs, pas de flexibilité horaires.
+Catégorie 4 - Coursiers internes des grandes entreprises
+Les grandes entreprises de Pointe-Noire (banques, sociétés pétrolières, administration) internalisent une partie de
+leurs besoins logistiques via des coursiers salariés. Le modèle typique est celui d'un ou deux coursiers en interne
+équipés d'une moto de fonction, parfois d'un véhicule. Le coût mensuel chargé d'un coursier interne est estimé à
+250 000-350 000 FCFA (salaire + charges + carburant + amortissement véhicule), pour une capacité réelle de
+8-12 courses par jour.
+Forces : disponibilité immédiate, loyauté, confidentialité renforcée, coût marginal faible pour chaque course
+supplémentaire. Faiblesses : sous-occupation chronique (capacité installée > demande réelle de 40-60 %),
+absentéisme en cas de congé ou maladie, coût fixe élevé, gestion RH administrative lourde, pas de scalability
+pour les pics d'activité. Ce segment représente l'opportunité de substitution la plus claire : convertir ces coursiers
+internes en clients externalisés nécessite de démontrer un TCO (Total Cost of Ownership) inférieur au coût
+interne chargé, avec un SLA supérieur.
+Tableau comparatif synthétique
+Délai prise en Couverture Facturation
+Catégorie Tarification type Traçabilité
+charge PN conforme
+Informel 1 500-3 500
+10-25 min Aucune Toute la ville Non
+(moto-taxis) FCFA/course
+2 500-4 500 Limitée Centre-ville +
+Startups livraison 20-45 min Partielle
+FCFA/course (statut) Tié-Tié
+Opérateurs 25 000-65 000 Aéroport +
+2-24h (express) Complète Conforme
+internationaux FCFA/enveloppe centre
+Coût fixe 250-350k Selon
+Coursiers internes Immédiate Interne N/A
+FCFA/mois affectation
+Tableau 1 - Analyse comparative des quatre catégories de concurrents à Pointe-Noire
+
+=== PAGE 8 ===
+AXE 2
+Fonctionnement administratif et opérationnel des
+concurrents
+Comprendre la machinerie administrative et opérationnelle des concurrents existants est déterminant pour
+identifier les angles d'attaque différenciants. L'analyse ci-dessous couvre les outils de gestion, les modèles
+opérationnels et le cadre réglementaire applicable à Pointe-Noire.
+Outils de suivi et gestion administrative
+L'outillage administratif des opérateurs locaux est marqué par une forte hétérogénéité. Les acteurs informels
+fonctionnent exclusivement via WhatsApp Business et des appels téléphoniques : aucune trace écrite hormis les
+messages vocaux et textos, aucun outil de suivi, aucune consolidation comptable. Les startups de livraison ont
+généralement développé une application mobile propriétaire (commande, suivi de statut « en attente / en cours /
+livré »), mais ces applications restent basiques : pas de géolocalisation en temps réel, pas d'horodatage précis de
+prise en charge et de livraison, pas de signature électronique. La gestion des contrats B2B se fait encore
+majoritairement par échange de PDF signés par email, sans plateforme contractuelle dédiée.
+La facturation constitue un point de friction majeur. La majorité des opérateurs émettent des reçus manuscrits
+ou des factures Excel sans numéro séquentiel, sans mention obligatoire du RCCM, sans calcul séparé de la TVA.
+Pour les entreprises clientes soumises à la TVA (régime réel), ces factures ne sont pas déductibles fiscalement,
+ce qui crée une insatisfaction latente. Les opérateurs internationaux (DHL, Bolloré) délivrent des factures
+conformes mais leur délai de traitement administratif (48-72h pour établir une facture) est inadapté aux besoins
+de facturation mensuelle consolidée.
+Les coursiers internes ne sont pas soumis à ces contraintes car ils ne facturent pas : ils sont intégrés au coût de
+structure. Mais leur gestion administrative représente une charge RH (paie, congés, formation, gestion des
+incidents) qui pèse indirectement sur l'entreprise.
+Modèles opérationnels
+Trois modèles opérationnels cohabitent à Pointe-Noire :
+(cid:127) Flotte propre avec livreurs salariés : modèle rare, réservé aux opérateurs internationaux et à quelques
+startups capitalisées. Avantages : contrôle qualité, formation normalisée, image de marque. Inconvénients :
+coût fixe élevé, flexibilité limitée, charge administrative lourde.
+(cid:127) Modèle hybride (flotte restreinte + livreurs indépendants sous contrat) : modèle émergent adopté par les
+startups locales. La flotte propre couvre les courses prioritaires et les pics, les indépendants absorbent le
+volume de fond. Avantages : flexibilité, coût variable, scalability. Inconvénients : qualité hétérogène,
+complexité de coordination.
+(cid:127) Modèle 100 % livreurs indépendants : dominant dans le segment informel. Aucun contrat, rémunération
+à la course, paiement cash ou mobile money. Avantages : zéro coût fixe. Inconvénients : aucune loyalty,
+qualité imprévisible, risque réputationnel élevé.
+
+=== PAGE 9 ===
+L'équipement des livreurs reste rudimentaire : smartphones personnels (souvent d'entrée de gamme, autonomie
+limitée), absence de sacoches professionnelles sécurisées, pas d'équipement de protection homologué pour la
+moto, pas de traçabilité GPS. La motorisation est majoritairement assurée par des motos chinoises d'entrée de
+gamme (Jialing, Loncin, Haojin) avec un coût d'usage élevé (consommation 3-4 L/100 km, entretiens fréquents).
+Cadre réglementaire applicable au Congo-Brazzaville
+Le secteur du transport de marchandises et de courrier au Congo-Brazzaville est encadré par un corpus
+réglementaire accessible mais qui nécessite une veille rigoureuse. Les principales obligations sont synthétisées
+ci-dessous.
+Autorité Délai / Coût
+Obligation Commentaire
+émettrice indicatif
+Tribunal de 2-4 semaines - 75 Obligatoire pour toute activité
+Inscription au RCCM
+Commerce - Greffe 000-150 000 FCFA commerciale formelle
+Carte professionnelle de Ministère des 3-6 semaines - 50 Spécifique au transport
+transporteur Transports 000-100 000 FCFA rémunéré de marchandises
+Numéro d'identification Direction Générale 1-2 semaines - Préalable à toute facturation
+fiscale (NIF) des Impôts (DGI) Gratuit conforme
+Taux 18,9 % -
+Compte TVA et TVA récupérable en amont
+DGI Déclarations
+déclarations mensuelles pour les clients B2B
+mensuelles
+Compagnies locales
+Assurance responsabilité Annuel - 200
+(ARC, RCGC, Selon flotte et activité
+civile professionnelle 000-450 000 FCFA
+AGC)
+Délai variable -
+Autorisation transport de Banque Centrale + Uniquement si transport de
+Agrément
+fonds et valeurs Ministère Intérieur chèques, espèces, valeurs
+spécifique
+Permis de conduire et Ministère des Permanent - Coût Motos : permis A ; véhicules :
+carte grise des véhicules Transports administratif permis B
+Mensuel - 16 % du
+Affiliation CNSS Caisse Nationale de
+brut (employeur + Obligatoire dès le 1er salarié
+(salariés) Sécurité Sociale
+salarié)
+Tableau 2 - Principales obligations réglementaires et administratives applicables au secteur du coursier B2B en République du Congo
+Aucune licence sectorielle restrictive n'a été identifiée pour le transport léger de courrier B2B. Le secteur n'est
+pas soumis à agrément préalable (contraire au transport de fonds qui exige un agrément spécifique délivré par la
+COBAC et le Ministère de l'Intérieur). Cette absence de barrière à l'entrée constitue une opportunité mais aussi
+une vulnérabilité : la facilité d'installation favorise l'émergence continue de concurrents informels.
+Point d'attention réglementaire
+
+=== PAGE 10 ===
+L'évolution du Code des Postes et Télécommunications congolais pourrait, à moyen terme, intégrer une
+régulation spécifique du courrier urbain (licence postale allégée). Une veille réglementaire semestrielle auprès
+de l'ARPT (Agence de Régulation des Postes et Télécommunications) est recommandée pour anticiper toute
+évolution qui impacterait le modèle d'affaires.
+
+=== PAGE 11 ===
+AXE 3
+Conception d'un sondage pour les entreprises de
+Pointe-Noire
+Méthodologie du sondage
+Le questionnaire ci-dessous a été conçu pour valider les hypothèses de marché auprès d'un échantillon
+représentatif d'entreprises enregistrées à Pointe-Noire. La cible est constituée de quatre segments : PME de
+services (cabinets comptables, juridiques, agences) représentant 50 % de l'échantillon, grands comptes
+industriels et pétroliers (20 %), établissements bancaires et financiers (15 %), administrations et
+établissements publics (15 %). La taille cible de l'échantillon est de 60 à 80 entreprises interrogées, ce qui
+permet d'obtenir une marge d'erreur inférieure à ±10 % au seuil de 90 %.
+Mode d'administration : entretien téléphonique structuré de 10-12 minutes complété par un questionnaire en
+ligne (Google Forms ou Typeform) envoyé en complément. Les répondants sont sélectionnés à partir des
+annuaires du CCIPA (Centre Congolais pour le Commerce et l'Industrie en Afrique), de la Fédération des
+Entreprises du Congo (FEC) et de la liste des établissements agréés par la COBAC. Une prime de participation
+(bon d'achat de 5 000 FCFA) est offerte pour améliorer le taux de réponse, cible 35-45 %.
+Le questionnaire (9 questions)
+Le questionnaire est structuré en quatre blocs thématiques : profil et besoins actuels (Q1-Q2), solutions
+utilisées et douleurs (Q3-Q6), budget et SLA attendus (Q4-Q5), appétit pour l'offre proposée (Q7-Q9). Les
+questions sont volontairement fermées ou semi-ouvertes pour faciliter l'analyse quantitative. Une question
+ouverte finale permet de capter les verbatims spontanés.
+N Variable
+Question Type
+° mesurée
+Combien de déplacements de documents Choix unique (0-2 /
+Q Volume de
+ou colis professionnels votre entreprise 3-5 / 6-10 / 11-20 /
+1 besoins
+effectue-t-elle en moyenne par semaine ? +20)
+Choix unique (0-25
+Q Quelle part de ces déplacements
+% / 26-50 % / 51-75 Niveau d'urgence
+2 qualifiez-vous d'urgents (délai < 2h) ?
+% / +75 %)
+Choix multiple
+(coursier interne /
+moto-taxi informel /
+Q Quelles solutions utilisez-vous aujourd'hui Concurrence
+taxi / startup
+3 pour ces déplacements ? actuelle
+livraison / opérateur
+international /
+véhicule société)
+
+=== PAGE 12 ===
+N Variable
+Question Type
+° mesurée
+Choix unique (<50k
+Quel est votre budget mensuel
+Q / 50-100k / 100-200k Budget
+approximatif pour ce type de service
+4 / 200-400k / +400k adressable
+(toutes solutions confondues) ?
+FCFA)
+Choix unique (<15
+Quel délai maximal de prise en charge
+Q min / 15-30 min /
+considérez-vous acceptable pour une SLA attendu
+5 30-60 min / 1-2h /
+course urgente ?
+>2h)
+Choix multiple +
+classement (perte de
+temps / coûts élevés /
+Q Quels sont vos principaux points de
+manque traçabilité / Pain points
+6 douleur avec les solutions actuelles ?
+fiabilité / facturation
+non conforme /
+sécurité)
+Échelle 1-5 (1 = sans
+Q Quelle importance accordez-vous au suivi
+importance, 5 = Attrait tracking
+7 en temps réel (GPS) de vos envois ?
+indispensable)
+Seriez-vous intéressé par une facturation Choix unique (très
+Q mensuelle consolidée (récapitulatif de intéressé / intéressé / Attrait
+8 toutes les courses du mois en une seule neutre / peu intéressé facturation
+facture conforme TVA) ? / pas du tout)
+Choix unique +
+Seriez-vous disposé à souscrire un
+budget acceptable
+Q abonnement mensuel (engagement 6 mois
+indiqué (Oui + Intent d'achat
+9 minimum) auprès d'un service externe
+montant / Non /
+professionnalisé si le tarif est compétitif ?
+Peut-être)
+Tableau 3 - Questionnaire de sondage B2B pour entreprises de Pointe-Noire (9 questions)
+Grille d'analyse des réponses
+Les réponses seront analysées selon trois axes : quantification du marché adressable (volume de courses B2B
+mensuel, budget consolidé), identification des segments prioritaires (quelles catégories d'entreprises
+expriment le plus fort besoin et la plus forte intention d'achat), calibrage de l'offre (pricing, SLA,
+fonctionnalités prioritaires de l'application). Une note de synthèse sera produite à l'issue de la collecte, avec
+recommandation de poursuite ou de réajustement du projet.
+Indicateur de go/no-go
+
+=== PAGE 13 ===
+Le projet sera considéré comme validé si au moins 40 % des répondants se déclarent « intéressés » ou « très
+intéressés » par la facturation mensuelle consolidée (Q8) ET si au moins 25 % indiquent une intention d'achat
+positive (Q9). En dessous de ces seuils, une phase de prospection qualitative approfondie sera conduite avant
+décision finale d'investissement.
+
+=== PAGE 14 ===
+DIAGNOSTIC STRATÉGIQUE
+Matrice SWOT du projet
+La matrice SWOT ci-dessous synthétise le diagnostic stratégique du projet de lancement d'un service de coursier
+B2B professionnalisé à Pointe-Noire. Elle croise les facteurs internes (forces et faiblesses du projet) avec les
+facteurs externes (opportunités et menaces du marché congolais).
+FORCES (Strengths) FAIBLESSES (Weaknesses)
+• Positionnement pionnier B2B formalisé à • Investissement initial 18-25 M FCFA (capitalisation
+Pointe-Noire limitée)
+• Application mobile avec suivi temps réel • Dépendance aux livreurs indépendants (qualité
+(différenciation) variable)
+• Facturation mensuelle consolidée conforme TVA • Pénétration digitale B2B encore faible (WhatsApp
+• Flotte hybride (coût fixe maîtrisé) dominant)
+• Équipe locale avec connaissance terrain • Pas de notoriété de marque en lancement
+• SLA contractuels transparents • Infrastructure IT réduite en phase 1
+• Capacité d'absorption des pics limitée
+OPPORTUNITÉS (Opportunities) MENACES (Threats)
+• Croissance du tissu PME à Pointe-Noire • Concurrence informelle à très bas coût
+• Digitalisation accélérée du secteur bancaire • Volatilité des prix carburant (subventions)
+• Hub pétrolier régional (volume documentaire) • Instabilité réglementaire possible (ARPT)
+• Insatisfaction latente vs offre informelle • Risques sécuritaires (transport valeurs)
+• Faiblesse des concurrents structurés locaux • Arrivée éventuelle d'acteurs panafricains (Glovo,
+• Possibilité de partenariats CCIPA / FEC Yango Delivery)
+• Extension future vers Brazzaville (corridor N2) • Tension sur devises pour import équipements
+• Pression sociale sur les prix B2B
+Tableau 4 - Matrice SWOT du projet de coursier B2B à Pointe-Noire
+L'analyse croisée révèle un profil de projet à risque modéré et potentiel élevé. Les forces internes
+(différenciation technologique, conformité fiscale) répondent directement aux opportunités de marché
+(insatisfaction vs informel, croissance B2B). Le principal couple faiblesse/menace concerne la capacité à résister
+à l'arrivée d'acteurs panafricains bien capitalisés : la fenêtre d'opportunité pour construire une position
+défendable est estimée à 18-24 mois, justifiant un calendrier de lancement serré.
+
+=== PAGE 15 ===
+PLAN D'ACTION
+Recommandations stratégiques
+Sur la base de l'analyse concurrentielle, du diagnostic opérationnel et du cadre réglementaire, six
+recommandations stratégiques sont formulées pour le lancement du service de coursier B2B à Pointe-Noire.
+Elles couvrent le périmètre géographique, le modèle opérationnel, la tarification, le stack technologique, les
+partenariats et la roadmap 12 mois.
+1. Zone de lancement prioritaire
+Concentrer le lancement sur le centre-ville de Pointe-Noire (autour du boulevard Charles de Gaulle, de
+l'avenue de l'Indépendance et de la zone portuaire) et les Arrondissements 1 à 3 (Tié-Tié, Lumumba,
+Ngoyo). Cette zone concentre environ 70 % des établissements bancaires, des cabinets professionnels et des
+PME de services de la ville. La densité B2B y est maximale, ce qui permet d'optimiser le taux d'occupation des
+livreurs et de réduire les temps morts. L'extension vers les Arrondissements 4-6 ( Mpaka, Patrice Lumumba
+Nord) et la zone de Nkossi est programmée en phase 2 (mois 6-9).
+2. Modèle opérationnel hybride
+Adopter un modèle hybride : 3 motos en flotte propre (dont 1 réservée aux courses express prioritaires) + 1
+voiture pour les colis volumineux et les transferts inter-sites + 5 livreurs indépendants sous contrat
+d'apport d'affaires encadrés par une charte qualité signée. Cette structure permet d'absorber un volume
+quotidien de 30-50 courses avec un coût fixe maîtrisé (estimation : 1,8 million FCFA/mois de coûts fixes
+opérationnels hors salaire siège) et une flexibilité sur les pics.
+3. Tarification calibrée
+Tarif
+Offre Cible Caractéristiques
+indicatif
+Course à la demande Course unique, paiement
+2 500 FCFA PME, agences
+(intra-muros) mobile money ou cash
+Course express (délai < 3 500 FCFA Priorité de prise en charge,
+Banques, urgences
+1h) (+40 %) suivi GPS
+Course 3 500-5 000 Au-delà de 8 km, tarif
+Tous segments
+inter-arrondissements FCFA kilométrique 350 FCFA/km
+Abonnement mensuel - 75 000 FCFA PME < 10 10 courses incluses, suivi
+Pack Découverte / mois courses/mois inclus, facturation mensuelle
+Abonnement mensuel - 180 000 Banques, PME 10-30 30 courses incluses, SLA
+Pack Business FCFA / mois courses/mois prioritaire, reporting
+Abonnement mensuel - 350 000 Grands comptes, +30 60 courses incluses, coursier
+Pack Premium FCFA / mois courses/mois dédié, gestionnaire de compte
+
+=== PAGE 16 ===
+Tarif
+Offre Cible Caractéristiques
+indicatif
+Selon grille Facturée en sus du forfait
+Course hors forfait Tous abonnés
+ci-dessus mensuel
+Tableau 5 - Grille tarifaire indicative pour le lancement
+4. Stack technologique minimal viable
+Le stack technologique de lancement doit rester sobre et orienté vers la fiabilité opérationnelle : application web
+et mobile de commande (PWA React ou application native légère), bot WhatsApp Business pour la
+commande alternative et la notification client, tableau de bord opérateur web pour le dispatch, génération
+automatique de factures PDF mensuelles consolidées avec mention RCCM et TVA, intégration mobile
+money (Airtel Money, Moov Money) pour le paiement B2C et le règlement B2B. Le GPS tracking temps réel
+via l'application livreurs constitue la pierre angulaire de la différenciation.
+5. Partenariats stratégiques à privilégier
+Les partenariats institutionnels accélèrent la pénétration B2B et crédibilisent l'offre. Trois leviers sont
+prioritaires : CCIPA (Centre Congolais pour le Commerce et l'Industrie en Afrique) pour l'accès à
+l'annuaire des membres et la co-organisation d'événements de présentation ; FEC (Fédération des Entreprises
+du Congo) pour la diffusion d'offres privilégiées aux adhérents ; Chambre de Commerce et d'Industrie du
+Kouilou-Niari pour la couverture départementale. Une offre de lancement « -15 % pendant 3 mois » réservée
+aux membres de ces organisations est recommandée.
+6. Roadmap 12 mois
+Phase Période Objectifs clés Indicateurs
+Phase 0 - Création société, RCCM, NIF, CNSS. Société opérationnelle,
+Mois 1-2
+Préparation Recrutement siège. Achat flotte. Dev app. MVP app livré
+Phase 1 - Sondage B2B administré. Recrutement et 10 clients actifs, 200
+Mois 3-4
+Lancement pilote formation livreurs. 10 clients pilotes. courses/mois, NPS > 30
+Commercialisation active. Partenariats 30 clients actifs, 800
+Phase 2 - Montée
+Mois 5-8 CCIPA/FEC. Extension Arrondissements courses/mois, MRR 6
+en charge
+4-6. M FCFA
+Optimisation SLA. Lancement Pack 50 clients actifs, 1 500
+Phase 3 -
+Mois 9-12 Premium. Préparation extension courses/mois, MRR 12
+Consolidation
+Brazzaville. M FCFA
+Phase 4 - Bilan année 1. Décision go/no-go extension Rentabilité
+Mois 12
+Évaluation Brazzaville. Levée éventuelle. opérationnelle atteinte
+Tableau 6 - Roadmap opérationnelle 12 mois
+
+=== PAGE 17 ===
+L'investissement initial estimé pour atteindre la phase 3 est de 18 à 25 millions FCFA (soit environ 27 000 à 38
+000 EUR), couvrant la création de société, l'achat de la flotte (3 motos + 1 voiture d'occasion), le développement
+technologique, le fonds de roulement des 6 premiers mois et le budget commercial. Le seuil de rentabilité
+opérationnelle est visé au mois 14-18, avec un portefeuille de 35-50 clients B2B actifs générant un chiffre
+d'affaires mensuel récurrent de 10-15 millions FCFA.
+
+=== PAGE 18 ===
+ANNEXE
+Questionnaire de sondage - Version terrain
+Le questionnaire ci-dessous est une version autonome, prête à imprimer et à administrer sur le terrain. Il reprend
+les 9 questions de l'Axe 3 sous une forme compacte destinée aux entretiens téléphoniques ou en face-à-face.
+Identification entreprise
+Nom de l'entreprise _________________________________
+Secteur d'activité Banque / PME services / Industrie / Administration / Autre
+Arrondissement / Zone _________________________________
+Personne interrogée (fonction) _________________________________
+Date de l'entretien _________________________________
+Q1. Combien de déplacements de documents ou colis professionnels votre entreprise effectue-t-elle en
+moyenne par semaine ?
+□ 0 à 2 déplacements
+□ 3 à 5 déplacements
+□ 6 à 10 déplacements
+□ 11 à 20 déplacements
+□ Plus de 20 déplacements
+Q2. Quelle part de ces déplacements qualifiez-vous d'urgents (délai souhaité inférieur à 2 heures) ?
+□ 0 à 25 %
+□ 26 à 50 %
+□ 51 à 75 %
+□ Plus de 75 %
+Q3. Quelles solutions utilisez-vous aujourd'hui pour ces déplacements ? (plusieurs choix possibles)
+□ Coursier interne salarié
+□ Moto-taxi informel (bend-skin)
+□ Taxi commun
+□ Startup de livraison (Yoole, Anka...)
+□ Opérateur international (DHL, Bolloré)
+□ Véhicule de société avec chauffeur
+□ Autre : ____________________
+Q4. Quel est votre budget mensuel approximatif pour ce type de service (toutes solutions confondues) ?
+□ Moins de 50 000 FCFA
+□ 50 000 à 100 000 FCFA
+□ 100 000 à 200 000 FCFA
+
+=== PAGE 19 ===
+□ 200 000 à 400 000 FCFA
+□ Plus de 400 000 FCFA
+Q5. Quel délai maximal de prise en charge considérez-vous acceptable pour une course urgente ?
+□ Moins de 15 minutes
+□ 15 à 30 minutes
+□ 30 à 60 minutes
+□ 1 à 2 heures
+□ Plus de 2 heures
+Q6. Quels sont vos principaux points de douleur avec les solutions actuelles ? (plusieurs choix, classez
+par ordre d'importance)
+□ Perte de temps en coordination
+□ Coûts élevés et imprévisibles
+□ Manque de traçabilité des envois
+□ Fiabilité aléatoire (retards, pertes)
+□ Facturation non conforme (pas de TVA)
+□ Sécurité des plis sensibles
+□ Autre : ____________________
+Q7. Quelle importance accordez-vous au suivi en temps réel (GPS) de vos envois ?
+□ 1 - Sans importance
+□ 2 - Peu important
+□ 3 - Neutre
+□ 4 - Important
+□ 5 - Indispensable
+Q8. Seriez-vous intéressé par une facturation mensuelle consolidée (récapitulatif de toutes les courses du
+mois en une seule facture conforme TVA) ?
+□ Très intéressé
+□ Intéressé
+□ Neutre
+□ Peu intéressé
+□ Pas du tout intéressé
+Q9. Seriez-vous disposé à souscrire un abonnement mensuel (engagement 6 mois minimum) auprès d'un
+service externe professionnalisé si le tarif est compétitif ?
+□ Oui, budget acceptable : ______ FCFA/mois
+□ Non, précisez pourquoi : ____________________
+□ Peut-être, sous conditions : ____________________
+Mention : Les réponses recueillies dans le cadre de ce sondage sont strictement confidentielles et seront utilisées uniquement à des fins
+d'analyse de marché. Aucune donnée nominative ne sera diffusée à des tiers.
