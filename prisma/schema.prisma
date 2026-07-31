@@ -21,6 +21,8 @@ model User {
   deliveries      Delivery[]
   invoices        Invoice[]
   company         Company?
+  notifications   Notification[]
+  payments        Payment[]
 }
 
 model Company {
@@ -98,6 +100,34 @@ model Timeline {
   delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
 }
 
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // new_delivery, status_change, payment, system
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  link      String? // optional deep link e.g. /suivi?ref=CMD-xxx
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  transactionId  String   @unique
+  provider       String   // airtel_money, moov_money
+  phoneNumber    String
+  amount         Int
+  status         String   @default("en_cours") // en_cours, reussi, echoue
+  invoiceId      String?
+  invoice        Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model Invoice {
   id        String   @id @default(cuid())
   reference String   @unique
@@ -115,4 +145,5 @@ model Invoice {
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   deliveries Delivery[]
+  payments   Payment[]
 }

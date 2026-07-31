@@ -1,0 +1,285 @@
+function DispatchView() {
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [livreurs, setLivreurs] = useState<Livreurs[]>([]);
+  const [dispatchStats, setDispatchStats] = useState<DispatchStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState('tous');
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [res, statsRes] = await Promise.all([
+        fetch('/api/dispatch'),
+        fetch('/api/dispatch/stats'),
+      ]);
+      if (res.ok) {
+        const data = await res.json();
+        setDeliveries(data.livraisons || []);
+        setLivreurs(data.livreurs || []);
+      }
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setDispatchStats(statsData);
+      }
+    } catch { /* ignore */ } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    const interval = setInterval(fetchData, 15000);
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  const handleAssign = async (livreurId: string) => {
+    if (!selectedDelivery) return;
+    setAssigning(selectedDelivery.id);
+    try {
+      const res = await fetch('/api/dispatch/assign', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deliveryId: selectedDelivery.id, livreurId }),
+      });
+      if (res.ok) {
+        toast.success(`Course ${selectedDelivery.reference} assignee avec succes`);
+        setAssignDialogOpen(false);
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.erreur || "Erreur lors de l'assignation");
+      }
+    } catch { toast.error('Erreur serveur'); } finally { setAssigning(null); }
+  };
+
+  const handleStatusChange = async (deliveryId: string, newStatus: string, ref: string) => {
+    setStatusUpdating(deliveryId);
+    try {
+      const res = await fetch(`/api/dispatch/${deliveryId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        toast.success(`Course ${ref} - ${statusConfig[newStatus]?.label || newStatus}`);
+        fetchData();
+      } else {
+        const data = await res.json();
+        toast.error(data.erreur || 'Erreur de changement de statut');
+      }
+    } catch { toast.error('Erreur serveur'); } finally { setStatusUpdating(null); }
+  };
+
+  const priorityColors: Record<string, string> = {
+    urgente: 'border-l-4 border-l-red-500',
+    haute: 'border-l-4 border-l-amber-500',
+    normale: 'border-l-4 border-l-sky-400',
+  };
+  const availableLivreurs = livreurs.filter(l => l.status === 'disponible');
+  const getNextStatus = (status: string): string | null => {
+    const map: Record<string, string> = { en_attente: 'prise_en_charge', prise_en_charge: 'en_course', en_course: 'livre' };
+    return map[status] || null;
+  };
+  const filtered = filterStatus === 'tous' ? deliveries : deliveries.filter(d => d.status === filterStatus);
+  const maxZone = Math.max(...(dispatchStats?.repartitionZones || []).map(z => z.count), 1);
+  const zoneColors = ['bg-primary', 'bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-purple-500'];
+  const zonePositions = [[30, 30], [70, 25], [25, 70], [65, 65], [50, 50]];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="text-xl font-bold">Centre de Dispatch</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gestion des courses et assignation des livreurs en temps reel</p>
+        </div>
+        <div className="flex gap-2">
+          <Badge variant="outline" className="gap-1.5 text-xs"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live</Badge>
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={fetchData}><Eye className="w-3.5 h-3.5" /> Rafraichir</Button>
+        </div>
+      </div>
+
+      {/* KPI Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <StatCard title="En attente" value={String(dispatchStats?.totalEnAttente ?? 0)} subtitle="A assigner" icon={<Clock className="w-5 h-5" />} loading={loading} />
+        <StatCard title="Actives" value={String(dispatchStats?.totalActives ?? 0)} subtitle="En cours" icon={<Navigation className="w-5 h-5" />} loading={loading} />
+        <StatCard title="Livreurs dispo" value={String(dispatchStats?.totalLivreursDispo ?? 0)} subtitle={"sur " + livreurs.length} icon={<Bike className="w-5 h-5" />} loading={loading} />
+        <StatCard title="Tps moyen" value={dispatchStats ? `${dispatchStats.tempsMoyenAssignation} min` : '...'} subtitle="Assignation" icon={<Timer className="w-5 h-5" />} loading={loading} />
+        <StatCard title="Revenus" value={dispatchStats ? `${(dispatchStats.revenusAujourdhui / 1000).toFixed(1)} k` : '...'} subtitle="FCFA aujourd'hui" icon={<CircleDollarSign className="w-5 h-5" />} loading={loading} />
+      </div>
+
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Zone Map */}
+        <Card className="lg:col-span-1">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Repartition zones</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {(dispatchStats?.repartitionZones || []).length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucune donnee</p>
+            ) : (
+              (dispatchStats?.repartitionZones || []).map((z, i) => (
+                <div key={z.zone}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-medium">{z.zone}</span>
+                    <span className="text-muted-foreground">{z.count}</span>
+                  </div>
+                  <div className="h-6 bg-muted rounded-lg overflow-hidden">
+                    <div className={`h-full rounded-lg ${zoneColors[i % zoneColors.length]} transition-all duration-500 flex items-center justify-end pr-1.5`} style={{ width: `${Math.max((z.count / maxZone) * 100, 10)}%` }}>
+                      <span className="text-[9px] text-white font-bold">{Math.round((z.count / maxZone) * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+            <Separator />
+            <div className="relative w-full h-32 bg-gradient-to-br from-emerald-50 via-sky-50 to-amber-50 rounded-xl overflow-hidden border">
+              <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+                <defs><pattern id="dgrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#16a34a" strokeWidth="0.3"/></pattern></defs>
+                <rect width="100%" height="100%" fill="url(#dgrid)" />
+              </svg>
+              {(dispatchStats?.repartitionZones || []).map((z, i) => {
+                const pos = zonePositions[i % zonePositions.length];
+                const size = Math.max(8, Math.min(24, z.count * 6));
+                return (
+                  <div key={z.zone} className="absolute flex flex-col items-center" style={{ left: `${pos[0]}%`, top: `${pos[1]}%`, transform: 'translate(-50%, -50%)' }}>
+                    <div className="rounded-full bg-primary/80 text-white flex items-center justify-center font-bold text-[10px] animate-pulse" style={{ width: size, height: size }}>{z.count}</div>
+                    <span className="text-[8px] mt-0.5 font-medium text-muted-foreground whitespace-nowrap">{z.zone}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Deliveries list */}
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Courses a traiter ({filtered.length})</CardTitle>
+            </div>
+            <div className="flex flex-wrap gap-1.5 pt-2">
+              {['tous', 'en_attente', 'prise_en_charge', 'en_course'].map(f => (
+                <Button key={f} variant={filterStatus === f ? 'default' : 'outline'} size="sm" onClick={() => setFilterStatus(f)} className="text-[11px] h-7">
+                  {f === 'tous' ? 'Toutes' : (statusConfig[f]?.label || f)}
+                </Button>
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent className="max-h-[550px] overflow-y-auto">
+            {loading ? (
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="p-4 rounded-xl bg-muted/50"><Skeleton className="h-4 w-1/3 mb-2" /><Skeleton className="h-3 w-2/3" /></div>))}</div>
+            ) : filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground"><Truck className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">Aucune course a traiter</p></div>
+            ) : (
+              <div className="space-y-3">
+                {filtered.map(d => {
+                  const nextStatus = getNextStatus(d.status);
+                  return (
+                    <div key={d.id} className={`rounded-xl bg-muted/50 hover:bg-muted transition-colors p-4 ${priorityColors[d.priority] || ''}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-bold">{d.reference}</span>
+                            <StatusBadge status={d.status} />
+                            {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+                            {d.priority === 'haute' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">HAUTE</Badge>}
+                            {d.company && <span className="text-[10px] text-muted-foreground">{d.company.name}</span>}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{d.pickup}</span>
+                            <ChevronRight className="w-3 h-3 shrink-0" /><span className="truncate">{d.dropoff}</span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(d.createdAt)}</span>
+                            <span className="font-semibold text-foreground">{formatPrice(d.price)} FCFA</span>
+                            {d.livreur && <span className="flex items-center gap-1"><Bike className="w-3 h-3" />{d.livreur.name}</span>}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1.5 shrink-0">
+                          {d.status === 'en_attente' && (
+                            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { setSelectedDelivery(d); setAssignDialogOpen(true); }}><Users className="w-3 h-3" /> Assigner</Button>
+                          )}
+                          {nextStatus && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={statusUpdating === d.id} onClick={() => handleStatusChange(d.id, nextStatus, d.reference)}>
+                              {statusUpdating === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                              {nextStatus === 'prise_en_charge' && 'Prendre en charge'}
+                              {nextStatus === 'en_course' && 'Demarrer course'}
+                              {nextStatus === 'livre' && 'Confirmer livraison'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Right: livreurs panel */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Equipe livreurs</CardTitle>
+            <CardDescription>{availableLivreurs.length} pret(s) sur {livreurs.length}</CardDescription>
+          </CardHeader>
+          <CardContent className="max-h-[480px] overflow-y-auto">
+            {loading ? (
+              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="flex items-center gap-3"><Skeleton className="w-9 h-9 rounded-full" /><Skeleton className="h-4 w-28" /></div>))}</div>
+            ) : livreurs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Aucun livreur</p>
+            ) : (
+              <div className="space-y-2">
+                {livreurs.map(l => (
+                  <div key={l.id} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${l.status === 'disponible' ? 'bg-emerald-50 hover:bg-emerald-100' : 'bg-muted/50 opacity-60'}`}>
+                    <div className="relative">
+                      <Avatar className="w-9 h-9"><AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">{l.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${l.status === 'disponible' ? 'bg-emerald-500' : l.status === 'en_course' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{l.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{l.vehicle} - {l.zone}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-500 fill-amber-500" /><span className="text-[10px] font-medium">{l.rating}</span></div>
+                        {l.activeDeliveries > 0 && <span className="text-[10px] text-muted-foreground">{l.activeDeliveries} active(s)</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Assign Dialog */}
+      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assigner un livreur</DialogTitle>
+            <DialogDescription>Course {selectedDelivery?.reference}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto space-y-2">
+            {availableLivreurs.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Aucun livreur disponible</p>
+            ) : (
+              availableLivreurs.map(l => (
+                <button key={l.id} className="w-full flex items-center gap-3 p-3 rounded-xl border hover:bg-muted transition-colors text-left" onClick={() => handleAssign(l.id)} disabled={assigning === selectedDelivery?.id}>
+                  <Avatar className="w-9 h-9"><AvatarFallback className="text-[10px] bg-emerald-100 text-emerald-700 font-semibold">{l.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{l.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{l.vehicle} - {l.zone} - {l.coursesDone} courses</p>
+                  </div>
+                  <div className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /><span className="text-xs font-medium">{l.rating}</span></div>
+                </button>
+              ))
+            )}
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setAssignDialogOpen(false)}>Annuler</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
