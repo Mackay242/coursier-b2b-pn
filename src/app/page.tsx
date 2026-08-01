@@ -590,7 +590,10 @@ function AuthForm() {
 // ============================================================
 // SIDEBAR NAVIGATION
 // ============================================================
-function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, userRole, pendingCount }: { current: View; onNavigate: (v: View) => void; open: boolean; onClose: () => void; companyName: string; planLabel: string; userRole: string; pendingCount: number }) {
+function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, userRole, pendingCount, whatsappNumber }: { current: View; onNavigate: (v: View) => void; open: boolean; onClose: () => void; companyName: string; planLabel: string; userRole: string; pendingCount: number; whatsappNumber: string }) {
+  const whatsappMessage = userRole === 'admin'
+    ? 'Bonjour, je souhaite commander une course.\n\nDepart : \nDestination : \nDestinataire : \nType : Standard / Express / Inter-arrondissement'
+    : 'Bonjour, je souhaite commander une course.\n\nDepart : \nDestination : \nDestinataire : ';
   const navItems: { id: View; label: string; icon: React.ReactNode; badge?: number }[] = (() => {
     if (userRole === 'admin') return [
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
@@ -679,13 +682,20 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
         <div className="p-4 border-t">
           <div className="bg-gradient-to-r from-primary/5 to-emerald-50 rounded-lg p-3">
             <div className="flex items-center gap-2 mb-1.5">
-              <MessageCircle className="w-3.5 h-3.5 text-primary" />
+              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
               <span className="text-xs font-semibold">WhatsApp Business</span>
             </div>
             <p className="text-[11px] text-muted-foreground leading-relaxed">Commandez aussi via WhatsApp pour plus de rapidite.</p>
-            <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs gap-1.5">
-              <MessageCircle className="w-3 h-3" /> Ouvrir WhatsApp
-            </Button>
+            <a
+              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800">
+                <MessageCircle className="w-3 h-3" /> Ouvrir WhatsApp
+              </Button>
+            </a>
           </div>
         </div>
       </aside>
@@ -1677,6 +1687,27 @@ function ParametresView() {
               <input type="checkbox" defaultChecked={n.defaultChecked} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-emerald-200">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-600" /> WhatsApp Business</CardTitle>
+          <CardDescription>Configurez le numero WhatsApp pour recevoir les commandes de vos clients</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Numero WhatsApp (avec indicatif, sans +)</label>
+            <Input placeholder="242066120648" defaultValue="242066120648" />
+            <p className="text-xs text-muted-foreground">Format : indicatif pays + numero. Ex: 242066120648 pour le Congo</p>
+          </div>
+          <div className="bg-emerald-50 rounded-lg p-3 text-sm">
+            <p className="font-medium text-emerald-800 mb-1">Comment ca marche ?</p>
+            <p className="text-xs text-emerald-700 leading-relaxed">Le bouton "Ouvrir WhatsApp" dans la sidebar ouvre WhatsApp avec un message pre-rempli. Vos clients peuvent ainsi commander directement. Pour un bot automatique, vous pourrez connecter l'API WhatsApp Business plus tard.</p>
+          </div>
+          <Button variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => window.open('https://wa.me/242066120648?text=Test', '_blank')}>
+            <MessageCircle className="w-4 h-4" /> Tester le lien WhatsApp
+          </Button>
         </CardContent>
       </Card>
 
@@ -2882,7 +2913,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <Sidebar current={currentView} onNavigate={setCurrentView} open={sidebarOpen} onClose={() => setSidebarOpen(false)} companyName={companyName} planLabel={planLabel} userRole={userRole} pendingCount={pendingCount} />
+      <Sidebar current={currentView} onNavigate={setCurrentView} open={sidebarOpen} onClose={() => setSidebarOpen(false)} companyName={companyName} planLabel={planLabel} userRole={userRole} pendingCount={pendingCount} whatsappNumber={userRole === 'admin' ? '242066120648' : '242066120648'} />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
