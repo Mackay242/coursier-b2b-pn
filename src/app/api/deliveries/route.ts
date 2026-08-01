@@ -14,10 +14,23 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const type = searchParams.get('type')
+    const search = searchParams.get('search')
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
     const where: Record<string, unknown> = {}
+
+    // Filtre de recherche globale
+    if (search) {
+      where.OR = [
+        { reference: { contains: search } },
+        { pickup: { contains: search } },
+        { dropoff: { contains: search } },
+        { recipientName: { contains: search } },
+        { recipientPhone: { contains: search } },
+        { description: { contains: search } },
+      ]
+    }
 
     // Filtrer par rôle
     if (session.user.role === 'client') {

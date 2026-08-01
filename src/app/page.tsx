@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useSession, signIn } from 'next-auth/react';
+import { useSession, signIn, signOut } from 'next-auth/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,11 +28,12 @@ import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
+import TrackingMap from '@/components/tracking-map-dynamic';
 
 // ============================================================
 // TYPES
 // ============================================================
-type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement';
+type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises';
 
 interface Delivery {
   id: string;
@@ -593,10 +594,12 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
   const navItems: { id: View; label: string; icon: React.ReactNode; badge?: number }[] = (() => {
     if (userRole === 'admin') return [
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
+      { id: 'carte', label: 'Carte', icon: <MapPinned className="w-4 h-4" /> },
       { id: 'dispatch', label: 'Dispatch', icon: <Truck className="w-4 h-4" />, badge: pendingCount },
       { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
       { id: 'livreurs', label: 'Livreurs', icon: <Bike className="w-4 h-4" /> },
+      { id: 'entreprises', label: 'Entreprises', icon: <Building2 className="w-4 h-4" /> },
       { id: 'rapports', label: 'Rapports', icon: <BarChart3 className="w-4 h-4" /> },
       { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
     ];
@@ -2492,6 +2495,264 @@ function PaiementView() {
 }
 
 // ============================================================
+// ENTREPRISES VIEW (admin)
+// ============================================================
+function EntreprisesView() {
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [companyDetail, setCompanyDetail] = useState<any>(null);
+
+  const fetchCompanies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/companies');
+      if (res.ok) {
+        const data = await res.json();
+        setCompanies(data.entreprises || []);
+      }
+    } catch {} finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
+
+  const fetchDetail = async (id: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`/api/companies/${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCompanyDetail(data);
+      }
+    } catch {} finally { setDetailLoading(false); }
+  };
+
+  const handleSelectCompany = (c: Company) => {
+    setSelectedCompany(c);
+    setCompanyDetail(null);
+    fetchDetail(c.id);
+  };
+
+  const planColors: Record<string, string> = {
+    decouverte: 'bg-sky-100 text-sky-700 border-sky-200',
+    business: 'bg-purple-100 text-purple-700 border-purple-200',
+    premium: 'bg-amber-100 text-amber-700 border-amber-200',
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Entreprises</h2>
+          <p className="text-sm text-muted-foreground mt-1">Gestion des entreprises clientes et de leurs abonnements</p>
+        </div>
+        <Badge variant="outline" className="gap-1.5">{companies.length} entreprise(s)</Badge>
+      </div>
+
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Company List */}
+        <div className="lg:col-span-1 space-y-3">
+          {loading ? (
+            <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <Card key={i}><CardContent className="p-4"><Skeleton className="h-5 w-2/3 mb-2" /><Skeleton className="h-3 w-1/2" /></CardContent></Card>)}</div>
+          ) : companies.map(c => (
+            <Card key={c.id} className={`cursor-pointer hover:shadow-md transition-all ${selectedCompany?.id === c.id ? 'ring-2 ring-primary' : ''}`} onClick={() => handleSelectCompany(c)}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Building2 className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold truncate">{c.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="outline" className={`text-[10px] ${planColors[c.plan] || ''}`}>{planLabels[c.plan] || c.plan}</Badge>
+                      <span className="text-[10px] text-muted-foreground">{c.planLimit} courses/mois</span>
+                    </div>
+                  </div>
+                </div>
+                {c.sector && <p className="text-[11px] text-muted-foreground mt-2 ml-[52px]">{c.sector}</p>}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Company Detail */}
+        <div className="lg:col-span-2">
+          {!selectedCompany ? (
+            <Card className="h-full min-h-[400px] flex items-center justify-center">
+              <CardContent className="text-center text-muted-foreground">
+                <Building2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">Selectionnez une entreprise pour voir ses details</p>
+              </CardContent>
+            </Card>
+          ) : detailLoading ? (
+            <Card className="h-full min-h-[400px] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></Card>
+          ) : companyDetail ? (
+            <div className="space-y-4">
+              {/* Header */}
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                        <Building2 className="w-7 h-7 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold">{companyDetail.entreprise?.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className={planColors[companyDetail.entreprise?.plan] || ''}>{planLabels[companyDetail.entreprise?.plan] || companyDetail.entreprise?.plan}</Badge>
+                          {companyDetail.entreprise?.nif && <span className="text-xs text-muted-foreground">NIF: {companyDetail.entreprise.nif}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3 mt-4 text-sm">
+                    {companyDetail.entreprise?.rccm && <div><span className="text-muted-foreground">RCCM:</span> <span className="font-medium">{companyDetail.entreprise.rccm}</span></div>}
+                    {companyDetail.entreprise?.address && <div><span className="text-muted-foreground">Adresse:</span> <span className="font-medium">{companyDetail.entreprise.address}</span></div>}
+                    {companyDetail.entreprise?.email && <div><span className="text-muted-foreground">Email:</span> <span className="font-medium">{companyDetail.entreprise.email}</span></div>}
+                    {companyDetail.entreprise?.phone && <div><span className="text-muted-foreground">Telephone:</span> <span className="font-medium">{companyDetail.entreprise.phone}</span></div>}
+                    {companyDetail.entreprise?.sector && <div><span className="text-muted-foreground">Secteur:</span> <span className="font-medium">{companyDetail.entreprise.sector}</span></div>}
+                    <div><span className="text-muted-foreground">Inscrite le:</span> <span className="font-medium">{formatDateFull(companyDetail.entreprise?.createdAt)}</span></div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Stats */}
+              {companyDetail.statistiques && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <StatCard title="Courses ce mois" value={String(companyDetail.statistiques.coursesCeMois || 0)} icon={<Package className="w-5 h-5" />} />
+                  <StatCard title="Factures en attente" value={String(companyDetail.statistiques.facturesEnAttente || 0)} icon={<Receipt className="w-5 h-5" />} />
+                  <StatCard title="Total facture" value={companyDetail.statistiques.totalFacture ? `${formatPrice(companyDetail.statistiques.totalFacture)} F` : '0 F'} icon={<CircleDollarSign className="w-5 h-5" />} />
+                  <StatCard title="Total paye" value={companyDetail.statistiques.totalPaye ? `${formatPrice(companyDetail.statistiques.totalPaye)} F` : '0 F'} icon={<CheckCircle2 className="w-5 h-5" />} />
+                </div>
+              )}
+
+              {/* Plan usage bar */}
+              {companyDetail.entreprise && (
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold">Utilisation du forfait</span>
+                      <span className="text-xs text-muted-foreground">{companyDetail.statistiques?.coursesCeMois || 0} / {companyDetail.entreprise.planLimit} courses</span>
+                    </div>
+                    <Progress value={Math.min(((companyDetail.statistiques?.coursesCeMois || 0) / companyDetail.entreprise.planLimit) * 100, 100)} className="h-3" />
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <Card className="h-full min-h-[400px] flex items-center justify-center">
+              <CardContent className="text-center text-muted-foreground">
+                <AlertCircle className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                <p className="text-sm">Erreur de chargement</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// CARTE VIEW (admin - real-time map)
+// ============================================================
+function CarteView() {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Carte temps reel</h2>
+          <p className="text-sm text-muted-foreground mt-1">Suivi GPS des livreurs et courses actives a Pointe-Noire</p>
+        </div>
+        <Badge variant="outline" className="gap-1.5 bg-emerald-50 text-emerald-700 border-emerald-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          En direct
+        </Badge>
+      </div>
+      <TrackingMap />
+    </div>
+  );
+}
+
+// ============================================================
+// GLOBAL SEARCH
+// ============================================================
+function GlobalSearch({ onClose, onNavigate }: { onClose: () => void; onNavigate: (v: View) => void }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<Delivery[]>([]);
+  const [searching, setSearching] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const res = await fetch(`/api/deliveries?search=${encodeURIComponent(query)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setResults((data.livraisons || []).slice(0, 8));
+        }
+      } catch { /* ignore */ } finally { setSearching(false); }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') onClose();
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto" onKeyDown={handleKeyDown}>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          placeholder="Rechercher par reference, adresse, destinataire..."
+          className="pl-9 pr-9 h-10"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+        />
+        {searching && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />}
+        {!searching && query && <X className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground cursor-pointer hover:text-foreground" onClick={() => { setQuery(''); setResults([]); }} />}
+      </div>
+      {results.length > 0 && (
+        <Card className="mt-2 max-h-80 overflow-y-auto">
+          <CardContent className="p-2">
+            {results.map(d => (
+              <button key={d.id} className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted text-left transition-colors" onClick={() => onNavigate('suivi')}>
+                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${d.priority === 'urgente' ? 'bg-red-100 text-red-600' : d.priority === 'haute' ? 'bg-amber-100 text-amber-600' : 'bg-sky-100 text-sky-600'}`}>
+                  <Package className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2"><span className="text-sm font-semibold">{d.reference}</span><StatusBadge status={d.status} /></div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{d.pickup} → {d.dropoff}</p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-xs font-bold">{formatPrice(d.price)} <span className="text-[10px] text-muted-foreground">F</span></p>
+                  <p className="text-[10px] text-muted-foreground">{formatDateFull(d.createdAt)}</p>
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+      {query.length >= 2 && !searching && results.length === 0 && (
+        <div className="text-center py-6 text-muted-foreground"><p className="text-sm">Aucun resultat pour &quot;{query}&quot;</p></div>
+      )}
+      {query.length < 2 && (
+        <div className="text-center py-4 text-muted-foreground"><p className="text-xs">Tapez au moins 2 caracteres pour rechercher</p></div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // MAIN APP
 // ============================================================
 export default function Home() {
@@ -2596,6 +2857,8 @@ export default function Home() {
     livreurs: <LivreursView />,
     parametres: <ParametresView />,
     dispatch: <DispatchView />,
+    carte: <CarteView />,
+    entreprises: <EntreprisesView />,
     mes_courses: <MesCoursesView />,
     rapports: <RapportsView />,
     paiement: <PaiementView />,
@@ -2610,6 +2873,8 @@ export default function Home() {
     livreurs: 'Livreurs',
     parametres: 'Parametres',
     dispatch: 'Dispatch',
+    carte: 'Carte temps reel',
+    entreprises: 'Entreprises',
     mes_courses: 'Mes courses',
     rapports: 'Rapports',
     paiement: 'Paiement',
@@ -2631,7 +2896,39 @@ export default function Home() {
           <div className="flex-1" />
 
           {/* Search */}
-          <Button variant="ghost" size="icon" className="relative" onClick={() => setSearchOpen(!searchOpen)}>
+          <Button variant="ghost" size="icon" className="relative" onClick={() => { setSearchOpen(!searchOpen); setNotifOpen(false); }}>
             <Search className="w-4 h-4" />
           </Button>
+
+          {/* Notifications */}
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => { setNotifOpen(!notifOpen); setSearchOpen(false); }}>
+              <Bell className="w-4 h-4" />
+            </Button>
+            <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+          </div>
+
+          {/* Sign out */}
+          <Button variant="ghost" size="icon" onClick={() => signOut({ callbackUrl: '/' })}>
+            <LogOut className="w-4 h-4" />
+          </Button>
+        </header>
+
+        {/* Search Overlay */}
+        {searchOpen && (
+          <div className="border-b px-4 lg:px-6 py-3 bg-muted/30">
+            <GlobalSearch onClose={() => setSearchOpen(false)} onNavigate={(v) => { setCurrentView(v); setSearchOpen(false); }} />
+          </div>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
+          {viewMap[currentView]}
+        </main>
+      </div>
+
+      <Toaster richColors closeButton position="bottom-right" />
+    </div>
+  );
+}
 

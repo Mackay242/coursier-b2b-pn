@@ -314,3 +314,29 @@ Stage Summary:
 - Paiements en base avec cycle de vie complet (en_cours → reussi/echoue)
 - Historique des paiements avec infos facture associée
 - Notification automatique en cas de succès
+---
+Task ID: 16
+Agent: Super Z (Main)
+Task: Continuer le developpement - Carte, Recherche, Entreprises
+
+Work Log:
+- Corrige la troncature critique de page.tsx (JSX du composant Home incomplet, serveur 500)
+- Ajoute import signOut depuis next-auth/react
+- Complete le JSX du composant Home: header avec notifications, bouton deconnexion, zone contenu principale, Toaster
+- Installe leaflet + react-leaflet + @types/leaflet
+- Cree /src/components/tracking-map.tsx: carte Leaflet interactive avec marqueurs livreurs, courses, itineraires
+- Cree /src/components/tracking-map-dynamic.tsx: wrapper next/dynamic avec ssr:false
+- Ajoute vue CarteView avec badge "En direct" + composant TrackingMap
+- Ajoute vue EntreprisesView pour admin avec liste, detail, statistiques, barre forfait
+- Ajoute GlobalSearch: recherche globale avec debouncing 300ms sur 6 champs
+- Ajoute parametre ?search= a l API /api/deliveries
+- Met a jour navigation admin: +Carte, +Entreprises
+- Build: 0 erreurs, 0 warnings, 30 routes compilees
+
+Stage Summary:
+- 3 nouvelles vues: Carte (Leaflet), Entreprises (admin), Recherche globale
+- 13 vues au total dans l application
+- Carte Leaflet avec marqueurs animees et itineraires
+- Recherche globale sur reference, adresse, destinataire, telephone, description
+- Gestion entreprises avec statistiques et barre de forfait
+- Fichier page.tsx ~2900 lignes, build propre
