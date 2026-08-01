@@ -360,6 +360,7 @@ function AuthForm() {
   const [companyName, setCompanyName] = useState('');
   const [phone, setPhone] = useState('');
   const [plan, setPlan] = useState('business');
+  const [role, setRole] = useState('client');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -387,7 +388,7 @@ function AuthForm() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name, companyName, phone, plan }),
+        body: JSON.stringify({ email, password, name, companyName, phone, plan, role }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -533,6 +534,17 @@ function AuthForm() {
                     required
                   />
                 </div>
+                <div className="space-y-2">
+                    <label className="text-sm font-medium">Role</label>
+                    <Select value={role} onValueChange={setRole}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="client">Client</SelectItem>
+                        <SelectItem value="admin">Administrateur</SelectItem>
+                        <SelectItem value="livreur">Livreur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <label className="text-sm font-medium">Telephone</label>
