@@ -22,7 +22,7 @@ import {
   ArrowUpRight, ArrowDownRight, Send, Star, CreditCard,
   Building2, Route, Calendar, Filter, Eye, Bike, Menu, X,
   Timer, MapPinned, LayoutDashboard, ChevronLeft, FileCheck2,
-  CircleDollarSign, Wallet, MessageCircle, Download, Loader2
+  CircleDollarSign, Wallet, MessageCircle, Download, Loader2, RefreshCw
 } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
@@ -33,7 +33,7 @@ import TrackingMap from '@/components/tracking-map-dynamic';
 // ============================================================
 // TYPES
 // ============================================================
-type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises';
+type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises' | 'whatsapp_bot';
 
 interface Delivery {
   id: string;
@@ -603,6 +603,7 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
       { id: 'livreurs', label: 'Livreurs', icon: <Bike className="w-4 h-4" /> },
       { id: 'entreprises', label: 'Entreprises', icon: <Building2 className="w-4 h-4" /> },
+      { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: <MessageCircle className="w-4 h-4" /> },
       { id: 'rapports', label: 'Rapports', icon: <BarChart3 className="w-4 h-4" /> },
       { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
     ];
@@ -2686,6 +2687,232 @@ function EntreprisesView() {
 }
 
 // ============================================================
+// WHATSAPP BOT VIEW (admin - chatbot management)
+// ============================================================
+function WhatsAppBotView() {
+  const [simMessage, setSimMessage] = useState('');
+  const [simFrom, setSimFrom] = useState('242066000000');
+  const [simResult, setSimResult] = useState<{ reply: string; parsed: { action: string; params: Record<string, string> } } | null>(null);
+  const [logs, setLogs] = useState<Array<{ id: string; title: string; message: string; createdAt: string; read: boolean }>>([]);
+  const [simLoading, setSimLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('simulateur');
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      const res = await fetch('/api/whatsapp/logs');
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data.logs || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchLogs(); }, [fetchLogs]);
+
+  const handleSimulate = async () => {
+    if (!simMessage.trim()) return;
+    setSimLoading(true);
+    setSimResult(null);
+    try {
+      const res = await fetch('/api/whatsapp/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: simFrom, message: simMessage }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSimResult({ reply: data.reply, parsed: data.parsed });
+        fetchLogs();
+      } else {
+        setSimResult({ reply: 'Erreur de simulation', parsed: { action: 'error', params: {} } });
+      }
+    } catch {
+      setSimResult({ reply: 'Erreur de connexion au serveur', parsed: { action: 'error', params: {} } });
+    }
+    setSimLoading(false);
+  };
+
+  const quickCommands = [
+    { label: 'Menu aide', msg: 'aide' },
+    { label: 'Commander', msg: 'commander:' },
+    { label: 'Commande complete', msg: 'commander:\ndépart=BGFI Centre-ville\ndestination=TotalEnergies Loandjili\ndestinataire=Jean Mouamba\ntel=065123456\ndesc=Documents confidentiels' },
+    { label: 'Suivi', msg: 'suivi CMD-2024-0001' },
+    { label: 'Historique', msg: 'historique' },
+    { label: 'Annuler', msg: 'annuler CMD-2024-0008' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-xl font-bold">WhatsApp Bot</h2>
+        <p className="text-sm text-muted-foreground mt-1">Automatisation des commandes via WhatsApp — Simulation et gestion</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="simulateur">Simulateur</TabsTrigger>
+          <TabsTrigger value="logs">Conversation Logs</TabsTrigger>
+          <TabsTrigger value="config">Configuration</TabsTrigger>
+        </TabsList>
+
+        {/* SIMULATEUR */}
+        <TabsContent value="simulateur" className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Input panel */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">Simuler un message client</CardTitle>
+                <CardDescription className="text-xs">Testez le bot comme si un client envoyait ce message via WhatsApp</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Numero du client</label>
+                  <Input value={simFrom} onChange={e => setSimFrom(e.target.value)} placeholder="242066000000" className="mt-1 h-9 text-sm" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Message</label>
+                  <Textarea value={simMessage} onChange={e => setSimMessage(e.target.value)} placeholder="Tapez un message ou utilisez une commande rapide..." className="mt-1 min-h-[100px] text-sm" />
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickCommands.map(qc => (
+                    <Button key={qc.label} variant="outline" size="sm" className="text-xs h-7" onClick={() => setSimMessage(qc.msg)}>
+                      {qc.label}
+                    </Button>
+                  ))}
+                </div>
+                <Button onClick={handleSimulate} disabled={simLoading || !simMessage.trim()} className="w-full gap-2">
+                  {simLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Envoyer la simulation
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Result panel */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">Reponse du bot</CardTitle>
+                {simResult && (
+                  <Badge variant="outline" className="text-xs w-fit">
+                    Action: {simResult.parsed.action}
+                  </Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                {simResult ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm whitespace-pre-wrap leading-relaxed max-h-[400px] overflow-y-auto">
+                    {simResult.reply}
+                  </div>
+                ) : (
+                  <div className="text-center text-muted-foreground py-12">
+                    <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Envoyez un message pour voir la reponse du bot</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* LOGS */}
+        <TabsContent value="logs">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-semibold">Conversation Logs</CardTitle>
+                  <CardDescription className="text-xs">Derniers echanges WhatsApp (recus via le webhook)</CardDescription>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchLogs} className="h-7 text-xs gap-1">
+                  <RefreshCw className="w-3 h-3" /> Rafraichir
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {logs.length === 0 ? (
+                <p className="text-center text-muted-foreground text-sm py-8">Aucun log. Les conversations apparaitront ici une fois le webhook actif.</p>
+              ) : (
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {logs.map(log => (
+                    <div key={log.id} className="border rounded-lg p-3 text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-emerald-700">{log.title}</span>
+                        <span className="text-muted-foreground">{new Date(log.createdAt).toLocaleString('fr-FR')}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap text-muted-foreground leading-relaxed">{log.message}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* CONFIG */}
+        <TabsContent value="config" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">Statut de connexion</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800">Mode Simulation</p>
+                    <p className="text-xs text-amber-600">Le bot repond localement. Pour la production, configurez Meta API ci-dessous.</p>
+                  </div>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between py-1.5 border-b"><span className="text-muted-foreground">Webhook URL</span><code className="bg-muted px-1.5 py-0.5 rounded">/api/whatsapp/webhook</code></div>
+                  <div className="flex justify-between py-1.5 border-b"><span className="text-muted-foreground">Verify Token</span><code className="bg-muted px-1.5 py-0.5 rounded">{process.env.NEXT_PUBLIC_WHATSAPP_MODE === 'live' ? 'Configure' : 'coursier-pn-verify-2024'}</code></div>
+                  <div className="flex justify-between py-1.5"><span className="text-muted-foreground">Messages aujourd'hui</span><span className="font-semibold">{logs.filter(l => new Date(l.createdAt).toDateString() === new Date().toDateString()).length}</span></div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">Commandes supportees</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {[
+                  { cmd: 'aide / bonjour / menu', desc: 'Affiche le menu principal' },
+                  { cmd: 'commander: ...', desc: 'Cree une nouvelle course' },
+                  { cmd: 'suivi CMD-XXXX-XXX', desc: 'Suit une livraison en temps reel' },
+                  { cmd: 'historique', desc: 'Affiche les dernieres courses' },
+                  { cmd: 'annuler CMD-XXXX-XXX', desc: 'Annule une course en attente' },
+                ].map(c => (
+                  <div key={c.cmd} className="flex items-start gap-2 py-1.5 border-b last:border-0">
+                    <code className="text-[11px] bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">{c.cmd}</code>
+                    <span className="text-xs text-muted-foreground">{c.desc}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-semibold">Variables d'environnement Meta API</CardTitle>
+                <CardDescription className="text-xs">Pour passer en production, ajoutez ces variables dans votre fichier .env</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-muted rounded-lg p-4 font-mono text-xs space-y-1">
+                  <p><span className="text-muted-foreground"># Obtenu depuis Meta Developer Dashboard</span></p>
+                  <p>WHATSAPP_PHONE_NUMBER_ID=<span className="text-amber-600">votre_phone_number_id</span></p>
+                  <p>WHATSAPP_ACCESS_TOKEN=<span className="text-amber-600">votre_access_token</span></p>
+                  <p>WHATSAPP_VERIFY_TOKEN=<span className="text-amber-600">coursier-pn-verify-2024</span></p>
+                  <p>WHATSAPP_BUSINESS_NUMBER=<span className="text-amber-600">242066105805</span></p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ============================================================
 // CARTE VIEW (admin - real-time map)
 // ============================================================
 function CarteView() {
@@ -2890,6 +3117,7 @@ export default function Home() {
     dispatch: <DispatchView />,
     carte: <CarteView />,
     entreprises: <EntreprisesView />,
+    whatsapp_bot: <WhatsAppBotView />,
     mes_courses: <MesCoursesView />,
     rapports: <RapportsView />,
     paiement: <PaiementView />,
@@ -2906,6 +3134,7 @@ export default function Home() {
     dispatch: 'Dispatch',
     carte: 'Carte temps reel',
     entreprises: 'Entreprises',
+    whatsapp_bot: 'WhatsApp Bot',
     mes_courses: 'Mes courses',
     rapports: 'Rapports',
     paiement: 'Paiement',

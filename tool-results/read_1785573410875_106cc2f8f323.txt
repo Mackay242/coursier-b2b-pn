@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useRef } from 'react';
+     4→import { useSession, signIn, signOut } from 'next-auth/react';
+     5→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     6→import { Badge } from '@/components/ui/badge';
+     7→import { Button } from '@/components/ui/button';
+     8→import { Input } from '@/components/ui/input';
+     9→import { Textarea } from '@/components/ui/textarea';
+    10→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+    11→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    12→import { Progress } from '@/components/ui/progress';
+    13→import { Separator } from '@/components/ui/separator';
+    14→import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+    15→import { ScrollArea } from '@/components/ui/scroll-area';
+    16→import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+    17→import { Skeleton } from '@/components/ui/skeleton';
+    18→import {
+    19→  Package, MapPin, Clock, Phone, FileText, BarChart3, Users, Truck,
+    20→  ChevronRight, Search, Plus, Bell, Settings, LogOut, TrendingUp,
+    21→  Navigation, CheckCircle2, Circle, AlertCircle, Zap, Shield, Receipt,
+    22→  ArrowUpRight, ArrowDownRight, Send, Star, CreditCard,
+    23→  Building2, Route, Calendar, Filter, Eye, Bike, Menu, X,
+    24→  Timer, MapPinned, LayoutDashboard, ChevronLeft, FileCheck2,
+    25→  CircleDollarSign, Wallet, MessageCircle, Download, Loader2
+    26→} from 'lucide-react';
+    27→import { io, Socket } from 'socket.io-client';
+    28→import { toast } from 'sonner';
+    29→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+    30→import { Toaster } from '@/components/ui/sonner';
+    31→import TrackingMap from '@/components/tracking-map-dynamic';
+    32→
+    33→// ============================================================
+    34→// TYPES
+    35→// ============================================================
+    36→type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises';
+    37→
+    38→interface Delivery {
+    39→  id: string;
+    40→  reference: string;
+    41→  type: string;
+    42→  status: string;
+    43→  pickup: string;
+    44→  dropoff: string;
+    45→  recipientName?: string;
+    46→  recipientPhone?: string;
+    47→  description?: string;
+    48→  priority: string;
+    49→  price: number;
+    50→  createdAt: string;
+    51→  livreur?: { id: string; name: string; phone: string; vehicle: string; status: string } | null;
+    52→  company?: { id: string; name: string } | null;
+    53→  timeline?: { id: string; event: string; comment: string; timestamp: string }[];
+    54→}
+    55→
+    56→interface Livreur {
+    57→  id: string;
+    58→  name: string;
+    59→  phone: string;
+    60→  vehicle: string;
+    61→  zone: string;
+    62→  rating: number;
+    63→  status: string;
+    64→  coursesDone: number;
+    65→  deliveriesCount: number;
+    66→  activeDeliveries: number;
+    67→  completedToday: number;
+    68→}
+    69→
+    70→interface Invoice {
+    71→  id: string;
+    72→  reference: string;
+    73→  period: string;
+    74→  amount: number;
+    75→  coursesCount: number;
+    76→  status: string;
+    77→  paidDate?: string | null;
+    78→  createdAt: string;
+    79→  company?: { id: string; name: string; nif: string; rccm: string } | null;
+    80→  _count?: { deliveries: number };
+    81→}
+    82→
+    83→interface DashboardStats {
+    84→  livraisonsActives: number;
+    85→  completeesAujourdhui: number;
+    86→  tempsMoyenPriseEnCharge: number;
+    87→  coursesMensuelles: {
+    88→    utilisees: number;
+    89→    limite: number;
+    90→    restantes: number;
+    91→    pourcentage: number;
+    92→  };
+    93→  depensesMensuelles: number;
+    94→  repartitionStatut: { statut: string; nombre: number }[];
+    95→  repartitionType: { type: string; nombre: number }[];
+    96→}
+    97→
+    98→interface Company {
+    99→  id: string;
+   100→  name: string;
+   101→  nif?: string;
+   102→  rccm?: string;
+   103→  address?: string;
+   104→  sector?: string;
+   105→  email?: string;
+   106→  phone?: string;
+   107→  plan: string;
+   108→  planLimit: number;
+   109→}
+   110→
+   111→interface AppNotification {
+   112→  id: string;
+   113→  type: string;
+   114→  title: string;
+   115→  message: string;
+   116→  read: boolean;
+   117→  link?: string;
+   118→  createdAt: string;
+   119→}
+   120→
+   121→interface DispatchStats {
+   122→  totalEnAttente: number;
+   123→  totalActives: number;
+   124→  totalLivreursDispo: number;
+   125→  totalLivreursEnCourse: number;
+   126→  tempsMoyenAssignation: number;
+   127→  repartitionZones: { zone: string; count: number }[];
+   128→  revenusAujourdhui: number;
+   129→}
+   130→
+   131→interface PaymentRecord {
+   132→  id: string;
+   133→  transactionId: string;
+   134→  provider: string;
+   135→  phoneNumber: string;
+   136→  amount: number;
+   137→  status: string;
+   138→  createdAt: string;
+   139→  invoice?: { reference: string; period: string };
+   140→}
+   141→
+   142→// ============================================================
+   143→// STATUS HELPERS
+   144→// ============================================================
+   145→const statusConfig: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
+   146→  en_attente: { label: 'En attente', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: <Clock className="w-3 h-3" /> },
+   147→  prise_en_charge: { label: 'Pris en charge', color: 'bg-sky-100 text-sky-800 border-sky-200', icon: <Package className="w-3 h-3" /> },
+   148→  en_course: { label: 'En course', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <Navigation className="w-3 h-3" /> },
+   149→  livre: { label: 'Livree', color: 'bg-emerald-50 text-emerald-700 border-emerald-100', icon: <CheckCircle2 className="w-3 h-3" /> },
+   150→  annulee: { label: 'Annulee', color: 'bg-red-100 text-red-800 border-red-200', icon: <AlertCircle className="w-3 h-3" /> },
+   151→  disponible: { label: 'Disponible', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" /> },
+   152→  pause: { label: 'En pause', color: 'bg-amber-100 text-amber-800 border-amber-200', icon: <Clock className="w-3 h-3" /> },
+   153→  payee: { label: 'Payee', color: 'bg-emerald-100 text-emerald-800 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" /> },
+   154→  en_retard: { label: 'En retard', color: 'bg-red-100 text-red-800 border-red-200', icon: <AlertCircle className="w-3 h-3" /> },
+   155→};
+   156→
+   157→const StatusBadge = ({ status }: { status: string }) => {
+   158→  const key = status === 'en_retard' ? 'en_retard' : status === 'payee' ? 'payee' : status;
+   159→  const cfg = statusConfig[key] || statusConfig.en_attente;
+   160→  return (
+   161→    <Badge variant="outline" className={`${cfg.color} gap-1 text-xs font-medium`}>
+   162→      {cfg.icon} {cfg.label}
+   163→    </Badge>
+   164→  );
+   165→};
+   166→
+   167→const formatPrice = (p: number) => p.toLocaleString('fr-FR');
+   168→const formatDate = (d: string) => {
+   169→  try {
+   170→    return new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+   171→  } catch {
+   172→    return d;
+   173→  }
+   174→};
+   175→const formatDateFull = (d: string) => {
+   176→  try {
+   177→    return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+   178→  } catch {
+   179→    return d;
+   180→  }
+   181→};
+   182→
+   183→const planLabels: Record<string, string> = {
+   184→  decouverte: 'Pack Decouverte',
+   185→  business: 'Pack Business',
+   186→  premium: 'Pack Premium',
+   187→};
+   188→
+   189→// ============================================================
+   190→// SHARED COMPONENTS
+   191→// ============================================================
+   192→function StatCard({ title, value, subtitle, icon, trend, trendUp, loading }: {
+   193→  title: string; value: string; subtitle?: string; icon: React.ReactNode; trend?: string; trendUp?: boolean; loading?: boolean;
+   194→}) {
+   195→  return (
+   196→    <Card className="relative overflow-hidden">
+   197→      <CardContent className="p-5">
+   198→        <div className="flex items-start justify-between">
+   199→          <div className="space-y-1">
+   200→            <p className="text-sm text-muted-foreground font-medium">{title}</p>
+   201→            {loading ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold tracking-tight">{value}</p>}
+   202→            {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+   203→            {trend && !loading && (
+   204→              <div className={`flex items-center gap-1 text-xs mt-2 ${trendUp ? 'text-emerald-600' : 'text-red-500'}`}>
+   205→                {trendUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+   206→                <span className="font-medium">{trend}</span>
+   207→              </div>
+   208→            )}
+   209→          </div>
+   210→          <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+   211→            {icon}
+   212→          </div>
+   213→        </div>
+   214→      </CardContent>
+   215→    </Card>
+   216→  );
+   217→}
+   218→
+   219→function MiniMap() {
+   220→  const [activeDot, setActiveDot] = useState(0);
+   221→  useEffect(() => {
+   222→    const interval = setInterval(() => setActiveDot(d => (d + 1) % 4), 2000);
+   223→    return () => clearInterval(interval);
+   224→  }, []);
+   225→
+   226→  const points = [
+   227→    { label: 'Depart', x: 25, y: 65, color: 'bg-emerald-500' },
+   228→    { label: 'Point actuel', x: 45, y: 45, color: 'bg-primary animate-pulse' },
+   229→    { label: 'Intermediaire', x: 60, y: 35, color: 'bg-amber-400' },
+   230→    { label: 'Arrivee', x: 80, y: 20, color: 'bg-red-500' },
+   231→  ];
+   232→
+   233→  return (
+   234→    <div className="relative w-full h-48 bg-gradient-to-br from-emerald-50 via-sky-50 to-amber-50 rounded-xl overflow-hidden border">
+   235→      <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+   236→        <defs>
+   237→          <pattern id="grid" width="30" height="30" patternUnits="userSpaceOnUse">
+   238→            <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#16a34a" strokeWidth="0.5"/>
+   239→          </pattern>
+   240→        </defs>
+   241→        <rect width="100%" height="100%" fill="url(#grid)" />
+   242→        <path d="M 25% 65% Q 35% 55% 45% 45% T 60% 35% T 80% 20%" fill="none" stroke="#16a34a" strokeWidth="2" strokeDasharray="6,4" opacity="0.6" />
+   243→      </svg>
+   244→      {points.map((p, i) => (
+   245→        <div key={i} className={`absolute flex flex-col items-center gap-0.5 transition-all duration-1000 ${i <= activeDot ? 'opacity-100' : 'opacity-30'}`}>
+   246→          <span className="text-[10px] font-medium text-muted-foreground bg-white/80 px-1.5 py-0.5 rounded-full shadow-sm whitespace-nowrap">{p.label}</span>
+   247→          <div className={`w-3 h-3 rounded-full ${p.color} shadow-lg ${i === activeDot ? 'ring-4 ring-emerald-200' : ''}`} style={{ left: `${p.x}%`, top: `${p.y}%` }} />
+   248→        </div>
+   249→      ))}
+   250→      <div className="absolute bottom-1 left-2 text-[9px] text-muted-foreground/60 font-medium">Centre-ville</div>
+   251→      <div className="absolute bottom-1 right-2 text-[9px] text-muted-foreground/60 font-medium">Tie-Tie</div>
+   252→      <div className="absolute top-1 right-2 text-[9px] text-muted-foreground/60 font-medium">Zone portuaire</div>
+   253→      <div className="absolute top-1 left-2 text-[9px] text-muted-foreground/60 font-medium">Lumumba</div>
+   254→    </div>
+   255→  );
+   256→}
+   257→
+   258→// ============================================================
+   259→// NOTIFICATION PANEL
+   260→// ============================================================
+   261→function NotificationPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+   262→  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+   263→  const [unreadCount, setUnreadCount] = useState(0);
+   264→  const [loading, setLoading] = useState(true);
+   265→
+   266→  const fetchNotifs = useCallback(async () => {
+   267→    try {
+   268→      const res = await fetch('/api/notifications');
+   269→      if (res.ok) {
+   270→        const data = await res.json();
+   271→        setNotifications(data.notifications || []);
+   272→        setUnreadCount(data.nonLues || 0);
+   273→      }
+   274→    } catch { /* ignore */ } finally { setLoading(false); }
+   275→  }, []);
+   276→
+   277→  useEffect(() => {
+   278→    if (open) fetchNotifs();
+   279→  }, [open, fetchNotifs]);
+   280→
+   281→  const markAsRead = async (id: string) => {
+   282→    await fetch(`/api/notifications/${id}`, { method: 'PATCH' });
+   283→    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+   284→    setUnreadCount(prev => Math.max(0, prev - 1));
+   285→  };
+   286→
+   287→  const markAllRead = async () => {
+   288→    await fetch(`/api/notifications/all`, { method: 'PATCH' });
+   289→    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+   290→    setUnreadCount(0);
+   291→  };
+   292→
+   293→  const notifIcons: Record<string, React.ReactNode> = {
+   294→    new_delivery: <Package className="w-4 h-4" />,
+   295→    status_change: <Navigation className="w-4 h-4" />,
+   296→    payment: <CircleDollarSign className="w-4 h-4" />,
+   297→    system: <Bell className="w-4 h-4" />,
+   298→  };
+   299→
+   300→  const timeAgo = (d: string) => {
+   301→    const diff = Date.now() - new Date(d).getTime();
+   302→    const mins = Math.floor(diff / 60000);
+   303→    if (mins < 1) return "A l'instant";
+   304→    if (mins < 60) return `Il y a ${mins} min`;
+   305→    const hrs = Math.floor(mins / 60);
+   306→    if (hrs < 24) return `Il y a ${hrs}h`;
+   307→    return `Il y a ${Math.floor(hrs / 24)}j`;
+   308→  };
+   309→
+   310→  return (
+   311→    <>
+   312→      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+   313→      <div className={`absolute right-0 top-full mt-2 w-96 max-h-[80vh] bg-card border rounded-xl shadow-2xl z-50 flex flex-col transition-all ${open ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+   314→        <div className="flex items-center justify-between p-4 border-b">
+   315→          <h3 className="font-semibold text-sm">Notifications</h3>
+   316→          <div className="flex items-center gap-2">
+   317→            {unreadCount > 0 && <span className="text-[10px] text-muted-foreground">{unreadCount} non lue(s)</span>}
+   318→            <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead} disabled={unreadCount === 0}>Tout marquer lu</Button>
+   319→          </div>
+   320→        </div>
+   321→        <div className="flex-1 overflow-y-auto">
+   322→          {loading ? (
+   323→            <div className="p-4 space-y-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="flex gap-3"><Skeleton className="w-8 h-8 rounded-full" /><div className="flex-1 space-y-1"><Skeleton className="h-3 w-3/4" /><Skeleton className="h-2.5 w-1/2" /></div></div>)}</div>
+   324→          ) : notifications.length === 0 ? (
+   325→            <div className="p-8 text-center text-muted-foreground">
+   326→              <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+   327→              <p className="text-sm">Aucune notification</p>
+   328→            </div>
+   329→          ) : (
+   330→            notifications.map(n => (
+   331→              <div key={n.id} className={`flex items-start gap-3 p-4 hover:bg-muted/50 cursor-pointer transition-colors border-b last:border-0 ${!n.read ? 'bg-primary/5' : ''}`} onClick={() => { if (!n.read) markAsRead(n.id); }}>
+   332→                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${!n.read ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>{notifIcons[n.type] || <Bell className="w-4 h-4" />}</div>
+   333→                <div className="flex-1 min-w-0">
+   334→                  <div className="flex items-center gap-2">
+   335→                    <p className={`text-sm ${!n.read ? 'font-semibold' : 'font-medium'}`}>{n.title}</p>
+   336→                    {!n.read && <div className="w-2 h-2 rounded-full bg-primary shrink-0" />}
+   337→                  </div>
+   338→                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>
+   339→                  <p className="text-[10px] text-muted-foreground mt-1">{timeAgo(n.createdAt)}</p>
+   340→                </div>
+   341→              </div>
+   342→            ))
+   343→          )}
+   344→        </div>
+   345→      </div>
+   346→    </>
+   347→  );
+   348→}
+   349→
+   350→// ============================================================
+   351→// LOGIN / REGISTER UI
+   352→// ============================================================
+   353→function AuthForm() {
+   354→  const [isRegister, setIsRegister] = useState(false);
+   355→  const [email, setEmail] = useState('');
+   356→  const [password, setPassword] = useState('');
+   357→  const [name, setName] = useState('');
+   358→  const [companyName, setCompanyName] = useState('');
+   359→  const [phone, setPhone] = useState('');
+   360→  const [plan, setPlan] = useState('business');
+   361→  const [error, setError] = useState('');
+   362→  const [loading, setLoading] = useState(false);
+   363→
+   364→  const handleLogin = async (e: React.FormEvent) => {
+   365→    e.preventDefault();
+   366→    setError('');
+   367→    setLoading(true);
+   368→    try {
+   369→      const result = await signIn('credentials', { email, password, redirect: false });
+   370→      if (result?.error) {
+   371→        setError('Email ou mot de passe incorrect');
+   372→      }
+   373→    } catch {
+   374→      setError('Erreur de connexion');
+   375→    } finally {
+   376→      setLoading(false);
+   377→    }
+   378→  };
+   379→
+   380→  const handleRegister = async (e: React.FormEvent) => {
+   381→    e.preventDefault();
+   382→    setError('');
+   383→    setLoading(true);
+   384→    try {
+   385→      const res = await fetch('/api/auth/register', {
+   386→        method: 'POST',
+   387→        headers: { 'Content-Type': 'application/json' },
+   388→        body: JSON.stringify({ email, password, name, companyName, phone, plan }),
+   389→      });
+   390→      const data = await res.json();
+   391→      if (!res.ok) {
+   392→        setError(data.error || "Erreur lors de l'inscription");
+   393→        return;
+   394→      }
+   395→      // Auto-login after register
+   396→      await signIn('credentials', { email, password, redirect: false });
+   397→    } catch {
+   398→      setError("Erreur serveur lors de l'inscription");
+   399→    } finally {
+   400→      setLoading(false);
+   401→    }
+   402→  };
+   403→
+   404→  return (
+   405→    <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
+   406→      {/* Background */}
+   407→      <div className="absolute inset-0 bg-gradient-to-br from-primary via-emerald-700 to-teal-800" />
+   408→      <div className="absolute inset-0 opacity-10">
+   409→        <div className="absolute top-20 left-20 w-64 h-64 rounded-full bg-white/20 blur-3xl" />
+   410→        <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-emerald-300/20 blur-3xl" />
+   411→        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-teal-200/10 blur-3xl" />
+   412→      </div>
+   413→
+   414→      {/* Decorative elements */}
+   415→      <div className="absolute top-8 left-8 opacity-20">
+   416→        <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+   417→          <circle cx="40" cy="40" r="35" stroke="white" strokeWidth="2" strokeDasharray="8 4" />
+   418→          <path d="M25 40 L35 30 L35 36 L55 36 L55 44 L35 44 L35 50 Z" fill="white" fillOpacity="0.5" />
+   419→        </svg>
+   420→      </div>
+   421→      <div className="absolute bottom-12 right-12 opacity-15">
+   422→        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+   423→          <rect x="5" y="5" width="50" height="50" rx="8" stroke="white" strokeWidth="2" strokeDasharray="6 3" />
+   424→          <circle cx="30" cy="30" r="12" stroke="white" strokeWidth="2" />
+   425→        </svg>
+   426→      </div>
+   427→
+   428→      <Card className="relative z-10 w-full max-w-md shadow-2xl border-0">
+   429→        <CardContent className="p-0">
+   430→          {/* Header */}
+   431→          <div className="bg-gradient-to-r from-primary to-emerald-700 p-6 rounded-t-xl text-white text-center">
+   432→            <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center mx-auto mb-4">
+   433→              <Bike className="w-8 h-8" />
+   434→            </div>
+   435→            <h1 className="text-xl font-bold">CoursierB2B</h1>
+   436→            <p className="text-sm opacity-80 mt-1">Pointe-Noire, Republique du Congo</p>
+   437→          </div>
+   438→
+   439→          <div className="p-6">
+   440→            {/* Tab Toggle */}
+   441→            <div className="flex bg-muted rounded-lg p-1 mb-6">
+   442→              <button
+   443→                onClick={() => { setIsRegister(false); setError(''); }}
+   444→                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${!isRegister ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+   445→              >
+   446→                Connexion
+   447→              </button>
+   448→              <button
+   449→                onClick={() => { setIsRegister(true); setError(''); }}
+   450→                className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${isRegister ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+   451→              >
+   452→                Creer un compte
+   453→              </button>
+   454→            </div>
+   455→
+   456→            {error && (
+   457→              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 mb-4 flex items-center gap-2">
+   458→                <AlertCircle className="w-4 h-4 shrink-0" />
+   459→                {error}
+   460→              </div>
+   461→            )}
+   462→
+   463→            {!isRegister ? (
+   464→              <form onSubmit={handleLogin} className="space-y-4">
+   465→                <div className="space-y-2">
+   466→                  <label className="text-sm font-medium">Email</label>
+   467→                  <div className="relative">
+   468→                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   469→                    <Input
+   470→                      type="email"
+   471→                      placeholder="votre@email.cg"
+   472→                      className="pl-9"
+   473→                      value={email}
+   474→                      onChange={e => setEmail(e.target.value)}
+   475→                      required
+   476→                    />
+   477→                  </div>
+   478→                </div>
+   479→                <div className="space-y-2">
+   480→                  <label className="text-sm font-medium">Mot de passe</label>
+   481→                  <div className="relative">
+   482→                    <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+   483→                    <Input
+   484→                      type="password"
+   485→                      placeholder="Votre mot de passe"
+   486→                      className="pl-9"
+   487→                      value={password}
+   488→                      onChange={e => setPassword(e.target.value)}
+   489→                      required
+   490→                    />
+   491→                  </div>
+   492→                </div>
+   493→                <Button type="submit" className="w-full gap-2" size="lg" disabled={loading}>
+   494→                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+   495→                  Se connecter
+   496→                </Button>
+   497→                <p className="text-center text-sm text-muted-foreground">
+   498→                  Pas encore de compte ?{' '}
+   499→                  <button type="button" onClick={() => { setIsRegister(true); setError(''); }} className="text-primary font-medium hover:underline">
+   500→                    Creer un compte
+   501→                  </button>
+   502→                </p>
+   503→              </form>
+   504→            ) : (
+   505→              <form onSubmit={handleRegister} className="space-y-4">
+   506→                <div className="space-y-2">
+   507→                  <label className="text-sm font-medium">Nom complet</label>
+   508→                  <Input
+   509→                    placeholder="Jean Dupont"
+   510→                    value={name}
+   511→                    onChange={e => setName(e.target.value)}
+   512→                    required
+   513→                  />
+   514→                </div>
+   515→                <div className="space-y-2">
+   516→                  <label className="text-sm font-medium">Nom de l'entreprise</label>
+   517→                  <Input
+   518→                    placeholder="Votre entreprise SARL"
+   519→                    value={companyName}
+   520→                    onChange={e => setCompanyName(e.target.value)}
+   521→                    required
+   522→                  />
+   523→                </div>
+   524→                <div className="space-y-2">
+   525→                  <label className="text-sm font-medium">Email</label>
+   526→                  <Input
+   527→                    type="email"
+   528→                    placeholder="votre@email.cg"
+   529→                    value={email}
+   530→                    onChange={e => setEmail(e.target.value)}
+   531→                    required
+   532→                  />
+   533→                </div>
+   534→                <div className="grid grid-cols-2 gap-3">
+   535→                  <div className="space-y-2">
+   536→                    <label className="text-sm font-medium">Telephone</label>
+   537→                    <Input
+   538→                      placeholder="+242 06 XXX"
+   539→                      value={phone}
+   540→                      onChange={e => setPhone(e.target.value)}
+   541→                    />
+   542→                  </div>
+   543→                  <div className="space-y-2">
+   544→                    <label className="text-sm font-medium">Forfait</label>
+   545→                    <Select value={plan} onValueChange={setPlan}>
+   546→                      <SelectTrigger><SelectValue /></SelectTrigger>
+   547→                      <SelectContent>
+   548→                        <SelectItem value="decouverte">Decouverte</SelectItem>
+   549→                        <SelectItem value="business">Business</SelectItem>
+   550→                        <SelectItem value="premium">Premium</SelectItem>
+   551→                      </SelectContent>
+   552→                    </Select>
+   553→                  </div>
+   554→                </div>
+   555→                <div className="space-y-2">
+   556→                  <label className="text-sm font-medium">Mot de passe</label>
+   557→                  <Input
+   558→                    type="password"
+   559→                    placeholder="6 caracteres minimum"
+   560→                    value={password}
+   561→                    onChange={e => setPassword(e.target.value)}
+   562→                    required
+   563→                    minLength={6}
+   564→                  />
+   565→                </div>
+   566→                <Button type="submit" className="w-full gap-2" size="lg" disabled={loading}>
+   567→                  {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+   568→                  Creer mon compte
+   569→                </Button>
+   570→                <p className="text-center text-sm text-muted-foreground">
+   571→                  Deja inscrit ?{' '}
+   572→                  <button type="button" onClick={() => { setIsRegister(false); setError(''); }} className="text-primary font-medium hover:underline">
+   573→                    Se connecter
+   574→                  </button>
+   575→                </p>
+   576→              </form>
+   577→            )}
+   578→
+   579→            <Separator className="my-5" />
+   580→            <p className="text-center text-[11px] text-muted-foreground">
+   581→              Service de coursier professionnel B2B - Pointe-Noire, Congo
+   582→            </p>
+   583→          </div>
+   584→        </CardContent>
+   585→      </Card>
+   586→    </div>
+   587→  );
+   588→}
+   589→
+   590→// ============================================================
+   591→// SIDEBAR NAVIGATION
+   592→// ============================================================
+   593→function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, userRole, pendingCount, whatsappNumber }: { current: View; onNavigate: (v: View) => void; open: boolean; onClose: () => void; companyName: string; planLabel: string; userRole: string; pendingCount: number; whatsappNumber: string }) {
+   594→  const whatsappMessage = userRole === 'admin'
+   595→    ? 'Bonjour, je souhaite commander une course.\n\nDepart : \nDestination : \nDestinataire : \nType : Standard / Express / Inter-arrondissement'
+   596→    : 'Bonjour, je souhaite commander une course.\n\nDepart : \nDestination : \nDestinataire : ';
+   597→  const navItems: { id: View; label: string; icon: React.ReactNode; badge?: number }[] = (() => {
+   598→    if (userRole === 'admin') return [
+   599→      { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
+   600→      { id: 'carte', label: 'Carte', icon: <MapPinned className="w-4 h-4" /> },
+   601→      { id: 'dispatch', label: 'Dispatch', icon: <Truck className="w-4 h-4" />, badge: pendingCount },
+   602→      { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
+   603→      { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
+   604→      { id: 'livreurs', label: 'Livreurs', icon: <Bike className="w-4 h-4" /> },
+   605→      { id: 'entreprises', label: 'Entreprises', icon: <Building2 className="w-4 h-4" /> },
+   606→      { id: 'rapports', label: 'Rapports', icon: <BarChart3 className="w-4 h-4" /> },
+   607→      { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
+   608→    ];
+   609→    if (userRole === 'livreur') return [
+   610→      { id: 'mes_courses', label: 'Mes courses', icon: <Package className="w-4 h-4" /> },
+   611→      { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
+   612→    ];
+   613→    // client
+   614→    return [
+   615→      { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
+   616→      { id: 'commander', label: 'Commander', icon: <Plus className="w-4 h-4" /> },
+   617→      { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
+   618→      { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
+   619→      { id: 'forfaits', label: 'Forfaits', icon: <CreditCard className="w-4 h-4" /> },
+   620→      { id: 'paiement', label: 'Paiement', icon: <Wallet className="w-4 h-4" /> },
+   621→      { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
+   622→    ];
+   623→  })();
+   624→  return (
+   625→    <>
+   626→      {open && <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={onClose} />}
+   627→      <aside className={`fixed top-0 left-0 z-50 h-full w-64 bg-card border-r flex flex-col transition-transform duration-200 lg:translate-x-0 lg:static lg:z-auto ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+   628→        {/* Logo */}
+   629→        <div className="p-5 border-b">
+   630→          <div className="flex items-center justify-between">
+   631→            <div className="flex items-center gap-3">
+   632→              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
+   633→                <Bike className="w-5 h-5 text-primary-foreground" />
+   634→              </div>
+   635→              <div>
+   636→                <h1 className="font-bold text-sm leading-tight">CoursierB2B</h1>
+   637→                <p className="text-[10px] text-muted-foreground">Pointe-Noire</p>
+   638→              </div>
+   639→            </div>
+   640→            <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={onClose}>
+   641→              <X className="w-4 h-4" />
+   642→            </Button>
+   643→          </div>
+   644→        </div>
+   645→
+   646→        {/* User Info */}
+   647→        <div className="p-4 border-b">
+   648→          <div className="flex items-center gap-3">
+   649→            <Avatar className="w-9 h-9">
+   650→              <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+   651→                {companyName.slice(0, 3).toUpperCase()}
+   652→              </AvatarFallback>
+   653→            </Avatar>
+   654→            <div className="flex-1 min-w-0">
+   655→              <p className="text-sm font-semibold truncate">{companyName}</p>
+   656→              <p className="text-[11px] text-muted-foreground">{planLabel}</p>
+   657→            </div>
+   658→            <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200 shrink-0">Actif</Badge>
+   659→          </div>
+   660→        </div>
+   661→
+   662→        {/* Nav Items */}
+   663→        <ScrollArea className="flex-1 py-3">
+   664→          <nav className="px-3 space-y-1">
+   665→            {navItems.map(item => (
+   666→              <button
+   667→                key={item.id}
+   668→                onClick={() => { onNavigate(item.id); onClose(); }}
+   669→                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${current === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted hover:text-foreground'}`}
+   670→              >
+   671→                {item.icon}
+   672→                <span className="flex-1 text-left">{item.label}</span>
+   673→                {item.badge !== undefined && item.badge > 0 && (
+   674→                  <span className={`min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold flex items-center justify-center ${current === item.id ? 'bg-white/20 text-white' : 'bg-red-100 text-red-700'}`}>{item.badge}</span>
+   675→                )}
+   676→              </button>
+   677→            ))}
+   678→          </nav>
+   679→        </ScrollArea>
+   680→
+   681→        {/* Footer */}
+   682→        <div className="p-4 border-t">
+   683→          <div className="bg-gradient-to-r from-primary/5 to-emerald-50 rounded-lg p-3">
+   684→            <div className="flex items-center gap-2 mb-1.5">
+   685→              <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+   686→              <span className="text-xs font-semibold">WhatsApp Business</span>
+   687→            </div>
+   688→            <p className="text-[11px] text-muted-foreground leading-relaxed">Commandez aussi via WhatsApp pour plus de rapidite.</p>
+   689→            <a
+   690→              href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
+   691→              target="_blank"
+   692→              rel="noopener noreferrer"
+   693→              className="block"
+   694→            >
+   695→              <Button variant="outline" size="sm" className="w-full mt-2 h-7 text-xs gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800">
+   696→                <MessageCircle className="w-3 h-3" /> Ouvrir WhatsApp
+   697→              </Button>
+   698→            </a>
+   699→          </div>
+   700→        </div>
+   701→      </aside>
+   702→    </>
+   703→  );
+   704→}
+   705→
+   706→// ============================================================
+   707→// VIEWS
+   708→// ============================================================
+   709→
+   710→function DashboardView({ companyName, planLabel, companyData, onRefreshDeliveries }: {
+   711→  companyName: string; planLabel: string; companyData: Company | null; onRefreshDeliveries?: () => void;
+   712→}) {
+   713→  const [stats, setStats] = useState<DashboardStats | null>(null);
+   714→  const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
+   715→  const [loading, setLoading] = useState(true);
+   716→  const socketRef = useRef<Socket | null>(null);
+   717→
+   718→  const fetchStats = useCallback(async () => {
+   719→    try {
+   720→      const res = await fetch('/api/dashboard/stats');
+   721→      if (res.ok) {
+   722→        const data = await res.json();
+   723→        setStats(data.statistiques);
+   724→      }
+   725→    } catch { /* ignore */ }
+   726→  }, []);
+   727→
+   728→  const fetchDeliveries = useCallback(async () => {
+   729→    try {
+   730→      const res = await fetch('/api/deliveries');
+   731→      if (res.ok) {
+   732→        const data = await res.json();
+   733→        const active = (data.livraisons || []).filter((d: Delivery) => !['livre', 'annulee'].includes(d.status));
+   734→        setActiveDeliveries(active);
+   735→      }
+   736→    } catch { /* ignore */ }
+   737→  }, []);
+   738→
+   739→  useEffect(() => {
+   740→    const load = async () => {
+   741→      setLoading(true);
+   742→      await Promise.all([fetchStats(), fetchDeliveries()]);
+   743→      setLoading(false);
+   744→    };
+   745→    load();
+   746→  }, [fetchStats, fetchDeliveries]);
+   747→
+   748→  // Socket.io integration
+   749→  useEffect(() => {
+   750→    const socket = io('/?XTransformPort=3003');
+   751→    socketRef.current = socket;
+   752→
+   753→    socket.on('connect', () => {
+   754→      console.log('Socket connected');
+   755→    });
+   756→
+   757→    socket.on('status:update', () => {
+   758→      fetchDeliveries();
+   759→      fetchStats();
+   760→      onRefreshDeliveries?.();
+   761→    });
+   762→
+   763→    socket.on('location:update', () => {
+   764→      // Could update the map tracking dot here
+   765→    });
+   766→
+   767→    return () => {
+   768→      socket.disconnect();
+   769→    };
+   770→  }, [fetchDeliveries, fetchStats, onRefreshDeliveries]);
+   771→
+   772→  const planUsage = stats ? stats.coursesMensuelles.pourcentage : 0;
+   773→  const monthlyCourses = stats?.coursesMensuelles.utilisees || 0;
+   774→  const planLimit = companyData?.planLimit || 30;
+   775→
+   776→  return (
+   777→    <div className="space-y-6">
+   778→      {/* Welcome Banner */}
+   779→      <Card className="bg-gradient-to-r from-primary to-emerald-700 text-primary-foreground border-0 overflow-hidden relative">
+   780→        <CardContent className="p-6 relative z-10">
+   781→          <div className="flex items-start justify-between">
+   782→            <div>
+   783→              <p className="text-sm opacity-80">Bienvenue,</p>
+   784→              <h2 className="text-2xl font-bold mt-1">{companyName}</h2>
+   785→              <p className="text-sm opacity-80 mt-2">{planLabel} - {monthlyCourses} / {planLimit} courses ce mois</p>
+   786→              <div className="flex items-center gap-2 mt-3">
+   787→                <div className="h-2 w-40 bg-white/20 rounded-full overflow-hidden">
+   788→                  <div className="h-full bg-white rounded-full" style={{ width: `${planUsage}%` }} />
+   789→                </div>
+   790→                <span className="text-xs font-medium">{planUsage}%</span>
+   791→              </div>
+   792→            </div>
+   793→            <div className="text-right hidden sm:block">
+   794→              <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30">{planLabel}</Badge>
+   795→            </div>
+   796→          </div>
+   797→        </CardContent>
+   798→        <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-white/5" />
+   799→        <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/5" />
+   800→      </Card>
+   801→
+   802→      {/* Stats Grid */}
+   803→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   804→        <StatCard title="Courses actives" value={String(stats?.livraisonsActives ?? 0)} subtitle="En cours maintenant" icon={<Package className="w-5 h-5" />} loading={loading} />
+   805→        <StatCard title="Livrees aujourd'hui" value={String(stats?.completeesAujourdhui ?? 0)} subtitle="Ce jour" icon={<CheckCircle2 className="w-5 h-5" />} trend="+12%" trendUp loading={loading} />
+   806→        <StatCard title="Temps moyen" value={`${stats?.tempsMoyenPriseEnCharge ?? 0} min`} subtitle="Prise en charge" icon={<Timer className="w-5 h-5" />} trend="-3 min" trendUp loading={loading} />
+   807→        <StatCard title="Ce mois" value={`${monthlyCourses}/${planLimit}`} subtitle="Courses utilisees" icon={<BarChart3 className="w-5 h-5" />} loading={loading} />
+   808→      </div>
+   809→
+   810→      <div className="grid lg:grid-cols-3 gap-6">
+   811→        {/* Active Deliveries */}
+   812→        <Card className="lg:col-span-2">
+   813→          <CardHeader className="pb-3">
+   814→            <div className="flex items-center justify-between">
+   815→              <CardTitle className="text-base font-semibold">Courses en cours</CardTitle>
+   816→              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => { fetchDeliveries(); fetchStats(); }}>
+   817→                <Eye className="w-3.5 h-3.5" /> Rafraichir
+   818→              </Button>
+   819→            </div>
+   820→          </CardHeader>
+   821→          <CardContent className="space-y-3">
+   822→            {loading ? (
+   823→              Array.from({ length: 3 }).map((_, i) => (
+   824→                <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50">
+   825→                  <Skeleton className="w-10 h-10 rounded-lg" />
+   826→                  <div className="flex-1 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-1/2" /></div>
+   827→                  <Skeleton className="h-4 w-20" />
+   828→                </div>
+   829→              ))
+   830→            ) : activeDeliveries.length === 0 ? (
+   831→              <div className="text-center py-8 text-muted-foreground">
+   832→                <Package className="w-10 h-10 mx-auto mb-2 opacity-30" />
+   833→                <p className="text-sm">Aucune course en cours</p>
+   834→              </div>
+   835→            ) : (
+   836→              activeDeliveries.map(d => (
+   837→                <div key={d.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors cursor-pointer">
+   838→                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+   839→                    {d.type === 'express' ? <Zap className="w-5 h-5 text-amber-600" /> : <Package className="w-5 h-5 text-primary" />}
+   840→                  </div>
+   841→                  <div className="flex-1 min-w-0">
+   842→                    <div className="flex items-center gap-2">
+   843→                      <span className="text-sm font-semibold">{d.reference}</span>
+   844→                      <StatusBadge status={d.status} />
+   845→                      {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+   846→                    </div>
+   847→                    <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+   848→                      <MapPin className="w-3 h-3 shrink-0" />
+   849→                      <span className="truncate">{d.pickup}</span>
+   850→                      <ChevronRight className="w-3 h-3 shrink-0" />
+   851→                      <span className="truncate">{d.dropoff}</span>
+   852→                    </div>
+   853→                  </div>
+   854→                  <div className="text-right shrink-0">
+   855→                    <p className="text-sm font-semibold">{formatPrice(d.price)} <span className="text-[10px] text-muted-foreground">FCFA</span></p>
+   856→                    {d.livreur && <p className="text-[10px] text-muted-foreground mt-0.5">{d.livreur.name}</p>}
+   857→                  </div>
+   858→                </div>
+   859→              ))
+   860→            )}
+   861→          </CardContent>
+   862→        </Card>
+   863→
+   864→        {/* Live Tracking Card */}
+   865→        <Card>
+   866→          <CardHeader className="pb-3">
+   867→            <CardTitle className="text-base font-semibold">Suivi en direct</CardTitle>
+   868→            <CardDescription>{activeDeliveries[0]?.reference || 'Aucune course'} - {activeDeliveries[0]?.type || ''}</CardDescription>
+   869→          </CardHeader>
+   870→          <CardContent className="space-y-4">
+   871→            <MiniMap />
+   872→            {activeDeliveries[0] ? (
+   873→              <>
+   874→                <div className="space-y-2.5">
+   875→                  {(activeDeliveries[0].timeline || []).slice(0, 3).map((t, i) => {
+   876→                    const isActive = i === (activeDeliveries[0].timeline?.length ?? 1) - 1;
+   877→                    const isDone = ['commande_creee', 'pris_en_charge', 'livre'].includes(t.event);
+   878→                    return (
+   879→                      <div key={t.id} className={`flex items-center gap-2.5 ${!isDone && !isActive ? 'opacity-40' : ''}`}>
+   880→                        <div className={`w-6 h-6 rounded-full flex items-center justify-center ${isDone ? 'bg-emerald-500' : isActive ? 'bg-primary animate-pulse' : 'bg-muted'}`}>
+   881→                          {isDone ? <CheckCircle2 className="w-3.5 h-3.5 text-white" /> : isActive ? <Navigation className="w-3.5 h-3.5 text-white" /> : <Circle className="w-3.5 h-3.5" />}
+   882→                        </div>
+   883→                        <div className="flex-1">
+   884→                          <p className={`text-xs ${isActive ? 'font-semibold text-primary' : 'font-medium'}`}>{t.comment}</p>
+   885→                          <p className="text-[10px] text-muted-foreground">{formatDate(t.timestamp)}</p>
+   886→                        </div>
+   887→                      </div>
+   888→                    );
+   889→                  })}
+   890→                </div>
+   891→                <Separator />
+   892→                <div className="flex items-center justify-between text-xs">
+   893→                  <span className="text-muted-foreground">Livreur</span>
+   894→                  <div className="flex items-center gap-1.5">
+   895→                    {activeDeliveries[0].livreur && (
+   896→                      <>
+   897→                        <Avatar className="w-5 h-5"><AvatarFallback className="text-[9px] bg-primary/10 text-primary">{activeDeliveries[0].livreur.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+   898→                        <span className="font-medium">{activeDeliveries[0].livreur.name}</span>
+   899→                      </>
+   900→                    )}
+   901→                  </div>
+   902→                </div>
+   903→                <Button className="w-full gap-2" size="sm">
+   904→                  <Phone className="w-3.5 h-3.5" /> Contacter le livreur
+   905→                </Button>
+   906→              </>
+   907→            ) : (
+   908→              <div className="text-center py-6 text-muted-foreground">
+   909→                <Navigation className="w-8 h-8 mx-auto mb-2 opacity-30" />
+   910→                <p className="text-xs">Aucune course active a suivre</p>
+   911→              </div>
+   912→            )}
+   913→          </CardContent>
+   914→        </Card>
+   915→      </div>
+   916→    </div>
+   917→  );
+   918→}
+   919→
+   920→function CommanderView() {
+   921→  const [orderType, setOrderType] = useState('standard');
+   922→  const [submitted, setSubmitted] = useState(false);
+   923→  const [createdRef, setCreatedRef] = useState('');
+   924→  const [createdPrice, setCreatedPrice] = useState(0);
+   925→  const [loading, setLoading] = useState(false);
+   926→  const [error, setError] = useState('');
+   927→
+   928→  // Form state
+   929→  const [pickup, setPickup] = useState('');
+   930→  const [dropoff, setDropoff] = useState('');
+   931→  const [recipientName, setRecipientName] = useState('');
+   932→  const [recipientPhone, setRecipientPhone] = useState('');
+   933→  const [description, setDescription] = useState('');
+   934→  const [priority, setPriority] = useState('normale');
+   935→  const [paymentMode, setPaymentMode] = useState('forfait');
+   936→  const [instructions, setInstructions] = useState('');
+   937→
+   938→  const handleSubmit = async () => {
+   939→    if (!pickup || !dropoff) { setError('Les adresses de depart et de livraison sont obligatoires'); return; }
+   940→    setError('');
+   941→    setLoading(true);
+   942→    try {
+   943→      const res = await fetch('/api/deliveries', {
+   944→        method: 'POST',
+   945→        headers: { 'Content-Type': 'application/json' },
+   946→        body: JSON.stringify({ type: orderType, pickup, dropoff, recipientName, recipientPhone, description, priority, paymentMode, instructions }),
+   947→      });
+   948→      const data = await res.json();
+   949→      if (!res.ok) {
+   950→        setError(data.erreur || 'Erreur lors de la creation de la course');
+   951→        return;
+   952→      }
+   953→      setCreatedRef(data.livraison.reference);
+   954→      setCreatedPrice(data.livraison.price);
+   955→      setSubmitted(true);
+   956→    } catch {
+   957→      setError('Erreur serveur');
+   958→    } finally {
+   959→      setLoading(false);
+   960→    }
+   961→  };
+   962→
+   963→  const typeLabel = orderType === 'inter-arrondissement' ? 'Inter-arrondissements' : orderType.charAt(0).toUpperCase() + orderType.slice(1);
+   964→
+   965→  if (submitted) {
+   966→    return (
+   967→      <div className="max-w-lg mx-auto text-center space-y-6 py-12">
+   968→        <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto">
+   969→          <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+   970→        </div>
+   971→        <h2 className="text-2xl font-bold">Course creee avec succes !</h2>
+   972→        <p className="text-muted-foreground">Votre commande {createdRef} a ete enregistree. Un livreur vous sera assigne dans les plus brefs delais.</p>
+   973→        <div className="bg-muted/50 rounded-xl p-4 text-left space-y-2">
+   974→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Reference</span><span className="font-semibold">{createdRef}</span></div>
+   975→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Type</span><span className="font-semibold">{typeLabel}</span></div>
+   976→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Tarif</span><span className="font-semibold text-primary">{formatPrice(createdPrice)} FCFA</span></div>
+   977→          <div className="flex justify-between text-sm"><span className="text-muted-foreground">Statut</span><StatusBadge status="en_attente" /></div>
+   978→        </div>
+   979→        <div className="flex gap-3 justify-center">
+   980→          <Button variant="outline" onClick={() => { setSubmitted(false); setPickup(''); setDropoff(''); setRecipientName(''); setRecipientPhone(''); setDescription(''); setInstructions(''); }}>Nouvelle course</Button>
+   981→          <Button>Suivre la course</Button>
+   982→        </div>
+   983→      </div>
+   984→    );
+   985→  }
+   986→
+   987→  return (
+   988→    <div className="max-w-2xl mx-auto space-y-6">
+   989→      <div>
+   990→        <h2 className="text-xl font-bold">Nouvelle course</h2>
+   991→        <p className="text-sm text-muted-foreground mt-1">Creez une demande de livraison en quelques clics</p>
+   992→      </div>
+   993→
+   994→      {error && (
+   995→        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3 flex items-center gap-2">
+   996→          <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+   997→        </div>
+   998→      )}
+   999→
+  1000→      <Card>
+  1001→        <CardHeader>
+  1002→          <CardTitle className="text-base">Type de course</CardTitle>
+  1003→        </CardHeader>
+  1004→        <CardContent>
+  1005→          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+  1006→            {[
+  1007→              { value: 'standard', label: 'Standard', price: '2 500 FCFA', desc: 'Intra-muros, delai normal', icon: <Package className="w-5 h-5" /> },
+  1008→              { value: 'express', label: 'Express', price: '3 500 FCFA', desc: 'Prise en charge prioritaire', icon: <Zap className="w-5 h-5" /> },
+  1009→              { value: 'inter-arrondissement', label: 'Inter-arrond.', price: '3 500+', desc: 'Au-dela de 8 km', icon: <Route className="w-5 h-5" /> },
+  1010→            ].map(t => (
+  1011→              <button key={t.value} onClick={() => setOrderType(t.value)} className={`p-4 rounded-xl border-2 text-left transition-all ${orderType === t.value ? 'border-primary bg-primary/5 shadow-sm' : 'border-border hover:border-primary/30 hover:bg-muted/50'}`}>
+  1012→                <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${orderType === t.value ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>{t.icon}</div>
+  1013→                <p className="font-semibold text-sm">{t.label}</p>
+  1014→                <p className="text-xs text-muted-foreground mt-0.5">{t.desc}</p>
+  1015→                <p className="font-bold text-sm mt-2 text-primary">{t.price}</p>
+  1016→              </button>
+  1017→            ))}
+  1018→          </div>
+  1019→        </CardContent>
+  1020→      </Card>
+  1021→
+  1022→      <Card>
+  1023→        <CardHeader>
+  1024→          <CardTitle className="text-base">Details de la course</CardTitle>
+  1025→        </CardHeader>
+  1026→        <CardContent className="space-y-4">
+  1027→          <div className="grid sm:grid-cols-2 gap-4">
+  1028→            <div className="space-y-2">
+  1029→              <label className="text-sm font-medium">Adresse de depart</label>
+  1030→              <div className="relative">
+  1031→                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+  1032→                <Input placeholder="Ex: Bd Charles de Gaulle, Centre-ville" className="pl-9" value={pickup} onChange={e => setPickup(e.target.value)} />
+  1033→              </div>
+  1034→            </div>
+  1035→            <div className="space-y-2">
+  1036→              <label className="text-sm font-medium">Adresse de livraison</label>
+  1037→              <div className="relative">
+  1038→                <MapPinned className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+  1039→                <Input placeholder="Ex: Zone portuaire, PAPN" className="pl-9" value={dropoff} onChange={e => setDropoff(e.target.value)} />
+  1040→              </div>
+  1041→            </div>
+  1042→          </div>
+  1043→          <div className="grid sm:grid-cols-2 gap-4">
+  1044→            <div className="space-y-2">
+  1045→              <label className="text-sm font-medium">Destinataire</label>
+  1046→              <Input placeholder="Nom du contact" value={recipientName} onChange={e => setRecipientName(e.target.value)} />
+  1047→            </div>
+  1048→            <div className="space-y-2">
+  1049→              <label className="text-sm font-medium">Telephone destinataire</label>
+  1050→              <Input placeholder="+242 06 XXX XXXX" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} />
+  1051→            </div>
+  1052→          </div>
+  1053→          <div className="space-y-2">
+  1054→            <label className="text-sm font-medium">Description du pli / colis</label>
+  1055→            <Textarea placeholder="Ex: Dossier de credit bancaire, enveloppe confidentielle, 3 cheques..." rows={3} value={description} onChange={e => setDescription(e.target.value)} />
+  1056→          </div>
+  1057→          <div className="grid sm:grid-cols-2 gap-4">
+  1058→            <div className="space-y-2">
+  1059→              <label className="text-sm font-medium">Priorite</label>
+  1060→              <Select value={priority} onValueChange={setPriority}>
+  1061→                <SelectTrigger><SelectValue /></SelectTrigger>
+  1062→                <SelectContent>
+  1063→                  <SelectItem value="normale">Normale</SelectItem>
+  1064→                  <SelectItem value="haute">Haute</SelectItem>
+  1065→                  <SelectItem value="urgente">Urgente (banques, urgences)</SelectItem>
+  1066→                </SelectContent>
+  1067→              </Select>
+  1068→            </div>
+  1069→            <div className="space-y-2">
+  1070→              <label className="text-sm font-medium">Mode de paiement</label>
+  1071→              <Select value={paymentMode} onValueChange={setPaymentMode}>
+  1072→                <SelectTrigger><SelectValue /></SelectTrigger>
+  1073→                <SelectContent>
+  1074→                  <SelectItem value="forfait">Inclus dans le forfait</SelectItem>
+  1075→                  <SelectItem value="mobile_money">Mobile Money (Airtel/Moov)</SelectItem>
+  1076→                  <SelectItem value="virement">Virement bancaire</SelectItem>
+  1077→                </SelectContent>
+  1078→              </Select>
+  1079→            </div>
+  1080→          </div>
+  1081→          <div className="space-y-2">
+  1082→            <label className="text-sm font-medium">Instructions supplementaires</label>
+  1083→            <Textarea placeholder="Ex: Appeler avant livraison, demander M. Okombi au bureau 204..." rows={2} value={instructions} onChange={e => setInstructions(e.target.value)} />
+  1084→          </div>
+  1085→        </CardContent>
+  1086→      </Card>
+  1087→
+  1088→      {/* Summary */}
+  1089→      <Card className="bg-muted/30">
+  1090→        <CardContent className="p-5">
+  1091→          <h3 className="font-semibold text-sm mb-3">Resume de la commande</h3>
+  1092→          <div className="space-y-2 text-sm">
+  1093→            <div className="flex justify-between"><span className="text-muted-foreground">Type de course</span><span className="font-medium">{typeLabel}</span></div>
+  1094→            <div className="flex justify-between"><span className="text-muted-foreground">Tarif</span><span className="font-bold text-primary">{orderType === 'express' ? '3 500' : orderType === 'standard' ? '2 500' : '3 500+'} FCFA</span></div>
+  1095→            <div className="flex justify-between"><span className="text-muted-foreground">Delai estime</span><span className="font-medium">{orderType === 'express' ? '< 1 heure' : '1-2 heures'}</span></div>
+  1096→          </div>
+  1097→          <Button className="w-full mt-4 gap-2" size="lg" onClick={handleSubmit} disabled={loading}>
+  1098→            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />} Confirmer la commande
+  1099→          </Button>
+  1100→        </CardContent>
+  1101→      </Card>
+  1102→    </div>
+  1103→  );
+  1104→}
+  1105→
+  1106→function SuiviView() {
+  1107→  const [filter, setFilter] = useState('tous');
+  1108→  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  1109→  const [loading, setLoading] = useState(true);
+  1110→
+  1111→  const fetchDeliveries = useCallback(async () => {
+  1112→    try {
+  1113→      setLoading(true);
+  1114→      const res = await fetch('/api/deliveries');
+  1115→      if (res.ok) {
+  1116→        const data = await res.json();
+  1117→        setDeliveries(data.livraisons || []);
+  1118→      }
+  1119→    } catch { /* ignore */ } finally {
+  1120→      setLoading(false);
+  1121→    }
+  1122→  }, []);
+  1123→
+  1124→  useEffect(() => { fetchDeliveries(); }, [fetchDeliveries]);
+  1125→
+  1126→  const filtered = filter === 'tous' ? deliveries : deliveries.filter(d => d.status === filter);
+  1127→
+  1128→  return (
+  1129→    <div className="space-y-6">
+  1130→      <div className="flex items-center justify-between">
+  1131→        <div>
+  1132→          <h2 className="text-xl font-bold">Suivi des courses</h2>
+  1133→          <p className="text-sm text-muted-foreground mt-1">Historique et suivi en temps reel de vos livraisons</p>
+  1134→        </div>
+  1135→      </div>
+  1136→
+  1137→      {/* Filters */}
+  1138→      <div className="flex flex-wrap gap-2">
+  1139→        {['tous', 'en_attente', 'prise_en_charge', 'en_course', 'livre'].map(f => (
+  1140→          <Button key={f} variant={filter === f ? 'default' : 'outline'} size="sm" onClick={() => setFilter(f)} className="text-xs">
+  1141→            {f === 'tous' ? 'Toutes' : (statusConfig[f]?.label || f)}
+  1142→            {f === 'tous' && <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{deliveries.length}</Badge>}
+  1143→          </Button>
+  1144→        ))}
+  1145→      </div>
+  1146→
+  1147→      {/* Delivery List */}
+  1148→      <div className="space-y-3">
+  1149→        {loading ? (
+  1150→          Array.from({ length: 3 }).map((_, i) => (
+  1151→            <Card key={i}><CardContent className="p-4"><div className="flex items-center gap-4"><Skeleton className="w-11 h-11 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-3 w-1/2" /></div></div></CardContent></Card>
+  1152→          ))
+  1153→        ) : filtered.length === 0 ? (
+  1154→          <div className="text-center py-12 text-muted-foreground">
+  1155→            <Package className="w-12 h-12 mx-auto mb-3 opacity-20" />
+  1156→            <p>Aucune course trouvee pour ce filtre</p>
+  1157→          </div>
+  1158→        ) : (
+  1159→          filtered.map(d => (
+  1160→            <Card key={d.id} className="hover:shadow-md transition-shadow cursor-pointer">
+  1161→              <CardContent className="p-4">
+  1162→                <div className="flex items-start gap-4">
+  1163→                  <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${d.type === 'express' ? 'bg-amber-100 text-amber-700' : d.status === 'livre' ? 'bg-emerald-100 text-emerald-700' : 'bg-primary/10 text-primary'}`}>
+  1164→                    {d.status === 'livre' ? <CheckCircle2 className="w-5 h-5" /> : d.type === 'express' ? <Zap className="w-5 h-5" /> : <Package className="w-5 h-5" />}
+  1165→                  </div>
+  1166→                  <div className="flex-1 min-w-0">
+  1167→                    <div className="flex items-center gap-2 flex-wrap">
+  1168→                      <span className="text-sm font-bold">{d.reference}</span>
+  1169→                      <StatusBadge status={d.status} />
+  1170→                      {d.type === 'express' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] gap-1"><Zap className="w-2.5 h-2.5" /> Express</Badge>}
+  1171→                      {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+  1172→                    </div>
+  1173→                    <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+  1174→                      <MapPin className="w-3 h-3 shrink-0" />
+  1175→                      <span className="truncate">{d.pickup}</span>
+  1176→                      <ChevronRight className="w-3 h-3 shrink-0" />
+  1177→                      <span className="truncate">{d.dropoff}</span>
+  1178→                    </div>
+  1179→                    <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+  1180→                      <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {formatDate(d.createdAt)}</span>
+  1181→                      {d.livreur && <span className="flex items-center gap-1"><Bike className="w-3 h-3" /> {d.livreur.name}</span>}
+  1182→                      <span className="font-semibold text-foreground">{formatPrice(d.price)} FCFA</span>
+  1183→                    </div>
+  1184→                  </div>
+  1185→                  <Button variant="ghost" size="icon" className="shrink-0">
+  1186→                    <ChevronRight className="w-4 h-4" />
+  1187→                  </Button>
+  1188→                </div>
+  1189→                {d.status === 'en_course' && (
+  1190→                  <div className="mt-3 pt-3 border-t">
+  1191→                    <div className="flex items-center gap-2">
+  1192→                      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+  1193→                      <span className="text-xs font-medium text-primary">En livraison - Suivi GPS actif</span>
+  1194→                    </div>
+  1195→                    <div className="mt-2 h-1.5 bg-muted rounded-full overflow-hidden">
+  1196→                      <div className="h-full bg-primary rounded-full" style={{ width: '65%' }} />
+  1197→                    </div>
+  1198→                  </div>
+  1199→                )}
+  1200→              </CardContent>
+  1201→            </Card>
+  1202→          ))
+  1203→        )}
+  1204→      </div>
+  1205→    </div>
+  1206→  );
+  1207→}
+  1208→
+  1209→function FacturationView() {
+  1210→  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  1211→  const [stats, setStats] = useState<DashboardStats | null>(null);
+  1212→  const [loading, setLoading] = useState(true);
+  1213→
+  1214→  useEffect(() => {
+  1215→    const load = async () => {
+  1216→      try {
+  1217→        const [invRes, statsRes] = await Promise.all([
+  1218→          fetch('/api/invoices'),
+  1219→          fetch('/api/dashboard/stats'),
+  1220→        ]);
+  1221→        if (invRes.ok) {
+  1222→          const invData = await invRes.json();
+  1223→          setInvoices(invData.factures || []);
+  1224→        }
+  1225→        if (statsRes.ok) {
+  1226→          const statsData = await statsRes.json();
+  1227→          setStats(statsData.statistiques);
+  1228→        }
+  1229→      } catch { /* ignore */ } finally {
+  1230→        setLoading(false);
+  1231→      }
+  1232→    };
+  1233→    load();
+  1234→  }, []);
+  1235→
+  1236→  const unpaidInvoices = invoices.filter(i => i.status !== 'payee');
+  1237→  const paidInvoices = invoices.filter(i => i.status === 'payee');
+  1238→  const totalUnpaid = unpaidInvoices.reduce((s, i) => s + i.amount, 0);
+  1239→  const totalPaid = paidInvoices.reduce((s, i) => s + i.amount, 0);
+  1240→
+  1241→  const handleDownloadPdf = async (invoiceId: string, ref: string) => {
+  1242→    try {
+  1243→      const res = await fetch(`/api/invoices/${invoiceId}/pdf`);
+  1244→      if (!res.ok) return;
+  1245→      const blob = await res.blob();
+  1246→      const url = URL.createObjectURL(blob);
+  1247→      const a = document.createElement('a');
+  1248→      a.href = url;
+  1249→      a.download = `${ref}.pdf`;
+  1250→      document.body.appendChild(a);
+  1251→      a.click();
+  1252→      document.body.removeChild(a);
+  1253→      URL.revokeObjectURL(url);
+  1254→    } catch { /* ignore */ }
+  1255→  };
+  1256→
+  1257→  return (
+  1258→    <div className="space-y-6">
+  1259→      <div>
+  1260→        <h2 className="text-xl font-bold">Facturation</h2>
+  1261→        <p className="text-sm text-muted-foreground mt-1">Factures mensuelles consolidees conformes TVA</p>
+  1262→      </div>
+  1263→
+  1264→      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+  1265→        <StatCard title="En attente" value={`${(totalUnpaid / 1000).toFixed(0)} k`} subtitle="FCFA a regler" icon={<Clock className="w-5 h-5" />} loading={loading} />
+  1266→        <StatCard title="Payees ce mois" value={`${(totalPaid / 1000).toFixed(0)} k`} subtitle="FCFA regles" icon={<CheckCircle2 className="w-5 h-5" />} trend="+8%" trendUp loading={loading} />
+  1267→        <StatCard title="Ce mois" value={`${((totalUnpaid + totalPaid) / 1000).toFixed(0)} k`} subtitle="FCFA" icon={<Receipt className="w-5 h-5" />} loading={loading} />
+  1268→      </div>
+  1269→
+  1270→      {/* Billing Note */}
+  1271→      <Card className="bg-emerald-50 border-emerald-200">
+  1272→        <CardContent className="p-4 flex items-start gap-3">
+  1273→          <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+  1274→            <FileCheck2 className="w-4 h-4 text-emerald-700" />
+  1275→          </div>
+  1276→          <div>
+  1277→            <p className="text-sm font-semibold text-emerald-800">Facturation conforme TVA</p>
+  1278→            <p className="text-xs text-emerald-700 mt-0.5">Toutes vos factures incluent le numero RCCM, la TVA calculee separement et sont deductible fiscalement. Telechargeable en PDF a tout moment.</p>
+  1279→          </div>
+  1280→        </CardContent>
+  1281→      </Card>
+  1282→
+  1283→      {/* Invoice List */}
+  1284→      <Card>
+  1285→        <CardHeader className="pb-3">
+  1286→          <div className="flex items-center justify-between">
+  1287→            <CardTitle className="text-base font-semibold">Historique des factures</CardTitle>
+  1288→          </div>
+  1289→        </CardHeader>
+  1290→        <CardContent>
+  1291→          {loading ? (
+  1292→            <div className="space-y-3">
+  1293→              {Array.from({ length: 3 }).map((_, i) => (
+  1294→                <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50"><Skeleton className="w-10 h-10 rounded-lg" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-3 w-2/3" /></div><Skeleton className="h-4 w-20" /></div>
+  1295→              ))}
+  1296→            </div>
+  1297→          ) : invoices.length === 0 ? (
+  1298→            <div className="text-center py-8 text-muted-foreground">
+  1299→              <FileText className="w-10 h-10 mx-auto mb-2 opacity-30" />
+  1300→              <p className="text-sm">Aucune facture</p>
+  1301→            </div>
+  1302→          ) : (
+  1303→            <div className="space-y-3">
+  1304→              {invoices.map(inv => (
+  1305→                <div key={inv.id} className="flex items-center gap-4 p-3 rounded-xl bg-muted/50 hover:bg-muted transition-colors">
+  1306→                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+  1307→                    <FileText className="w-5 h-5 text-primary" />
+  1308→                  </div>
+  1309→                  <div className="flex-1 min-w-0">
+  1310→                    <div className="flex items-center gap-2">
+  1311→                      <span className="text-sm font-semibold">{inv.reference}</span>
+  1312→                      <StatusBadge status={inv.status} />
+  1313→                    </div>
+  1314→                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+  1315→                      <span>{inv.period}</span>
+  1316→                      <span>-</span>
+  1317→                      <span>{inv.coursesCount} courses</span>
+  1318→                      {inv.paidDate && <span>- Payee le {formatDateFull(inv.paidDate)}</span>}
+  1319→                    </div>
+  1320→                  </div>
+  1321→                  <div className="text-right shrink-0">
+  1322→                    <p className="text-sm font-bold">{formatPrice(inv.amount)} <span className="text-[10px] text-muted-foreground">FCFA</span></p>
+  1323→                    <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1 mt-1 text-primary" onClick={() => handleDownloadPdf(inv.id, inv.reference)}>
+  1324→                      <Download className="w-3 h-3" /> PDF
+  1325→                    </Button>
+  1326→                  </div>
+  1327→                </div>
+  1328→              ))}
+  1329→            </div>
+  1330→          )}
+  1331→        </CardContent>
+  1332→      </Card>
+  1333→    </div>
+  1334→  );
+  1335→}
+  1336→
+  1337→function ForfaitsView() {
+  1338→  const plans = [
+  1339→    {
+  1340→      name: 'Pack Decouverte',
+  1341→      price: '75 000',
+  1342→      target: 'PME < 10 courses/mois',
+  1343→      features: ['10 courses incluses/mois', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Support WhatsApp', 'Paiement Mobile Money'],
+  1344→      highlight: false,
+  1345→      color: 'border-border',
+  1346→    },
+  1347→    {
+  1348→      name: 'Pack Business',
+  1349→      price: '180 000',
+  1350→      target: 'Banques, PME 10-30 courses/mois',
+  1351→      features: ['30 courses incluses/mois', 'SLA prioritaire (prise en charge < 30 min)', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Gestionnaire de compte dedie', 'Reporting mensuel detaille', 'Support prioritaire'],
+  1352→      highlight: true,
+  1353→      color: 'border-primary',
+  1354→    },
+  1355→    {
+  1356→      name: 'Pack Premium',
+  1357→      price: '350 000',
+  1358→      target: 'Grands comptes, +30 courses/mois',
+  1359→      features: ['60 courses incluses/mois', 'Coursier dedie assigne', 'SLA garanti (prise en charge < 15 min)', 'Suivi GPS en temps reel', 'Facture mensuelle conforme TVA', 'Gestionnaire de compte senior', 'Reporting hebdomadaire', 'Support 24/7', 'Course hors forfait au tarif reduit'],
+  1360→      highlight: false,
+  1361→      color: 'border-border',
+  1362→    },
+  1363→  ];
+  1364→
+  1365→  return (
+  1366→    <div className="space-y-6">
+  1367→      <div className="text-center max-w-xl mx-auto">
+  1368→        <h2 className="text-xl font-bold">Forfaits mensuels</h2>
+  1369→        <p className="text-sm text-muted-foreground mt-1">Choisissez le forfait adapte au volume de courses de votre entreprise. Engagement minimum 6 mois.</p>
+  1370→      </div>
+  1371→
+  1372→      <div className="grid md:grid-cols-3 gap-6">
+  1373→        {plans.map(plan => (
+  1374→          <Card key={plan.name} className={`relative ${plan.highlight ? 'border-2 border-primary shadow-lg scale-[1.02]' : ''} ${plan.color}`}>
+  1375→            {plan.highlight && (
+  1376→              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+  1377→                <Badge className="bg-primary text-primary-foreground px-3">Recommande</Badge>
+  1378→              </div>
+  1379→            )}
+  1380→            <CardHeader className="text-center pb-2 pt-6">
+  1381→              <CardTitle className="text-lg">{plan.name}</CardTitle>
+  1382→              <CardDescription className="text-xs">{plan.target}</CardDescription>
+  1383→            </CardHeader>
+  1384→            <CardContent className="text-center space-y-4">
+  1385→              <div className="py-2">
+  1386→                <span className="text-3xl font-bold">{plan.price}</span>
+  1387→                <span className="text-sm text-muted-foreground ml-1">FCFA/mois</span>
+  1388→              </div>
+  1389→              <Separator />
+  1390→              <ul className="space-y-2.5 text-left">
+  1391→                {plan.features.map(f => (
+  1392→                  <li key={f} className="flex items-start gap-2 text-sm">
+  1393→                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+  1394→                    <span>{f}</span>
+  1395→                  </li>
+  1396→                ))}
+  1397→              </ul>
+  1398→              <Button className={`w-full mt-2 ${plan.highlight ? '' : 'variant-outline'}`} variant={plan.highlight ? 'default' : 'outline'}>
+  1399→                {plan.highlight ? 'Votre forfait actuel' : 'Changer de forfait'}
+  1400→              </Button>
+  1401→            </CardContent>
+  1402→          </Card>
+  1403→        ))}
+  1404→      </div>
+  1405→
+  1406→      {/* A la carte pricing */}
+  1407→      <Card>
+  1408→        <CardHeader>
+  1409→          <CardTitle className="text-base">Tarification a la demande</CardTitle>
+  1410→          <CardDescription>Sans abonnement, payez par course selon le type</CardDescription>
+  1411→        </CardHeader>
+  1412→        <CardContent>
+  1413→          <div className="grid sm:grid-cols-3 gap-4">
+  1414→            <div className="p-4 rounded-xl bg-muted/50 text-center">
+  1415→              <Package className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+  1416→              <p className="font-semibold text-sm">Standard</p>
+  1417→              <p className="text-xs text-muted-foreground mt-0.5">Intra-muros</p>
+  1418→              <p className="text-lg font-bold mt-2">2 500 <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+  1419→            </div>
+  1420→            <div className="p-4 rounded-xl bg-amber-50 text-center">
+  1421→              <Zap className="w-6 h-6 mx-auto text-amber-600 mb-2" />
+  1422→              <p className="font-semibold text-sm">Express</p>
+  1423→              <p className="text-xs text-muted-foreground mt-0.5">Delai &lt; 1h, suivi GPS</p>
+  1424→              <p className="text-lg font-bold mt-2">3 500 <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+  1425→            </div>
+  1426→            <div className="p-4 rounded-xl bg-muted/50 text-center">
+  1427→              <Route className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
+  1428→              <p className="font-semibold text-sm">Inter-arrondissements</p>
+  1429→              <p className="text-xs text-muted-foreground mt-0.5">Au-dela de 8 km</p>
+  1430→              <p className="text-lg font-bold mt-2">3 500+ <span className="text-xs font-normal text-muted-foreground">FCFA</span></p>
+  1431→              <p className="text-[10px] text-muted-foreground">350 FCFA/km supplementaire</p>
+  1432→            </div>
+  1433→          </div>
+  1434→        </CardContent>
+  1435→      </Card>
+  1436→    </div>
+  1437→  );
+  1438→}
+  1439→
+  1440→function LivreursView() {
+  1441→  const [livreurs, setLivreurs] = useState<Livreurs[]>([]);
+  1442→  const [loading, setLoading] = useState(true);
+  1443→
+  1444→  useEffect(() => {
+  1445→    const load = async () => {
+  1446→      try {
+  1447→        const res = await fetch('/api/livreurs');
+  1448→        if (res.ok) {
+  1449→          const data = await res.json();
+  1450→          setLivreurs(data.livreurs || []);
+  1451→        }
+  1452→      } catch { /* ignore */ } finally {
+  1453→        setLoading(false);
+  1454→      }
+  1455→    };
+  1456→    load();
+  1457→  }, []);
+  1458→
+  1459→  const available = livreurs.filter(l => l.status === 'disponible').length;
+  1460→  const inRoute = livreurs.filter(l => l.status === 'en_course').length;
+  1461→  const avgRating = livreurs.length > 0 ? (livreurs.reduce((s, l) => s + l.rating, 0) / livreurs.length).toFixed(1) : '0';
+  1462→
+  1463→  return (
+  1464→    <div className="space-y-6">
+  1465→      <div>
+  1466→        <h2 className="text-xl font-bold">Equipe livreurs</h2>
+  1467→        <p className="text-sm text-muted-foreground mt-1">Flotte en temps reel - {livreurs.length} livreurs actifs</p>
+  1468→      </div>
+  1469→
+  1470→      <div className="grid grid-cols-3 gap-4">
+  1471→        <StatCard title="Disponibles" value={String(available)} subtitle="Pret pour une course" icon={<CheckCircle2 className="w-5 h-5" />} loading={loading} />
+  1472→        <StatCard title="En course" value={String(inRoute)} subtitle="Livraisons en cours" icon={<Navigation className="w-5 h-5" />} loading={loading} />
+  1473→        <StatCard title="Note moyenne" value={avgRating} subtitle="Sur 5 etoiles" icon={<Star className="w-5 h-5" />} loading={loading} />
+  1474→      </div>
+  1475→
+  1476→      {loading ? (
+  1477→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  1478→          {Array.from({ length: 3 }).map((_, i) => (
+  1479→            <Card key={i}><CardContent className="p-5 space-y-4"><div className="flex items-center gap-3"><Skeleton className="w-11 h-11 rounded-full" /><div className="space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-24" /></div></div><Skeleton className="h-16" /><Skeleton className="h-8 w-full" /></CardContent></Card>
+  1480→          ))}
+  1481→        </div>
+  1482→      ) : (
+  1483→        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+  1484→          {livreurs.map(l => (
+  1485→            <Card key={l.id} className="hover:shadow-md transition-shadow">
+  1486→              <CardContent className="p-5">
+  1487→                <div className="flex items-start justify-between">
+  1488→                  <div className="flex items-center gap-3">
+  1489→                    <Avatar className="w-11 h-11">
+  1490→                      <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{l.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+  1491→                    </Avatar>
+  1492→                    <div>
+  1493→                      <p className="text-sm font-semibold">{l.name}</p>
+  1494→                      <p className="text-xs text-muted-foreground">{l.vehicle}</p>
+  1495→                    </div>
+  1496→                  </div>
+  1497→                  <StatusBadge status={l.status} />
+  1498→                </div>
+  1499→                <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+  1500→                  <div className="bg-muted/50 rounded-lg p-2">
+  1501→                    <p className="text-lg font-bold">{l.coursesDone}</p>
+  1502→                    <p className="text-[10px] text-muted-foreground">Courses</p>
+  1503→                  </div>
+  1504→                  <div className="bg-muted/50 rounded-lg p-2">
+  1505→                    <div className="flex items-center justify-center gap-1">
+  1506→                      <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+  1507→                      <span className="text-lg font-bold">{l.rating}</span>
+  1508→                    </div>
+  1509→                    <p className="text-[10px] text-muted-foreground">Note</p>
+  1510→                  </div>
+  1511→                </div>
+  1512→                <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+  1513→                  <MapPin className="w-3 h-3" />
+  1514→                  <span>Zone: {l.zone}</span>
+  1515→                </div>
+  1516→                <Separator className="my-3" />
+  1517→                <div className="flex gap-2">
+  1518→                  <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-8 text-xs">
+  1519→                    <Phone className="w-3 h-3" /> Appeler
+  1520→                  </Button>
+  1521→                  <Button variant="outline" size="sm" className="flex-1 gap-1.5 h-8 text-xs">
+  1522→                    <MessageCircle className="w-3 h-3" /> WhatsApp
+  1523→                  </Button>
+  1524→                </div>
+  1525→              </CardContent>
+  1526→            </Card>
+  1527→          ))}
+  1528→        </div>
+  1529→      )}
+  1530→    </div>
+  1531→  );
+  1532→}
+  1533→
+  1534→function ParametresView() {
+  1535→  const [company, setCompany] = useState<Company | null>(null);
+  1536→  const [loading, setLoading] = useState(true);
+  1537→  const [saving, setSaving] = useState(false);
+  1538→  const [saveSuccess, setSaveSuccess] = useState(false);
+  1539→
+  1540→  const [name, setName] = useState('');
+  1541→  const [nif, setNif] = useState('');
+  1542→  const [rccm, setRccm] = useState('');
+  1543→  const [sector, setSector] = useState('');
+  1544→  const [email, setEmail] = useState('');
+  1545→  const [phone, setPhone] = useState('');
+  1546→  const [address, setAddress] = useState('');
+  1547→
+  1548→  useEffect(() => {
+  1549→    const load = async () => {
+  1550→      try {
+  1551→        // Fetch dashboard stats to get company info
+  1552→        const statsRes = await fetch('/api/dashboard/stats');
+  1553→        if (statsRes.ok) {
+  1554→          const statsData = await statsRes.json();
+  1555→          if (statsData.entreprise) {
+  1556→            const c = statsData.entreprise;
+  1557→            setCompany({ id: '', name: c.nom, plan: c.plan, planLimit: c.planLimite });
+  1558→          }
+  1559→        }
+  1560→        // Also try to get company details
+  1561→        const compRes = await fetch('/api/companies');
+  1562→        if (compRes.ok) {
+  1563→          const compData = await compRes.json();
+  1564→          if (compData.entreprises && compData.entreprises.length > 0) {
+  1565→            const c = compData.entreprises[0];
+  1566→            setCompany(prev => prev ? { ...prev, id: c.id, nif: c.nif || '', rccm: c.rccm || '', address: c.address || '', sector: c.sector || '', email: c.email || '', phone: c.phone || '' } : null);
+  1567→            setName(c.name || '');
+  1568→            setNif(c.nif || '');
+  1569→            setRccm(c.rccm || '');
+  1570→            setSector(c.sector || '');
+  1571→            setEmail(c.email || '');
+  1572→            setPhone(c.phone || '');
+  1573→            setAddress(c.address || '');
+  1574→          }
+  1575→        }
+  1576→      } catch { /* ignore */ } finally {
+  1577→        setLoading(false);
+  1578→      }
+  1579→    };
+  1580→    load();
+  1581→  }, []);
+  1582→
+  1583→  const handleSave = async () => {
+  1584→    if (!company?.id) return;
+  1585→    setSaving(true);
+  1586→    setSaveSuccess(false);
+  1587→    try {
+  1588→      const res = await fetch(`/api/companies/${company.id}`, {
+  1589→        method: 'PATCH',
+  1590→        headers: { 'Content-Type': 'application/json' },
+  1591→        body: JSON.stringify({ name, nif, rccm, sector, email, phone, address }),
+  1592→      });
+  1593→      if (res.ok) {
+  1594→        setSaveSuccess(true);
+  1595→        setTimeout(() => setSaveSuccess(false), 3000);
+  1596→      }
+  1597→    } catch { /* ignore */ } finally {
+  1598→      setSaving(false);
+  1599→    }
+  1600→  };
+  1601→
+  1602→  const handleLogout = async () => {
+  1603→    await fetch('/api/auth/signout', { method: 'POST' });
+  1604→    window.location.href = '/';
+  1605→  };
+  1606→
+  1607→  return (
+  1608→    <div className="max-w-2xl mx-auto space-y-6">
+  1609→      <div>
+  1610→        <h2 className="text-xl font-bold">Parametres</h2>
+  1611→        <p className="text-sm text-muted-foreground mt-1">Gerez les parametres de votre compte entreprise</p>
+  1612→      </div>
+  1613→
+  1614→      <Card>
+  1615→        <CardHeader>
+  1616→          <CardTitle className="text-base">Informations entreprise</CardTitle>
+  1617→        </CardHeader>
+  1618→        <CardContent className="space-y-4">
+  1619→          {loading ? (
+  1620→            <div className="space-y-4">
+  1621→              {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+  1622→            </div>
+  1623→          ) : (
+  1624→            <>
+  1625→              <div className="grid sm:grid-cols-2 gap-4">
+  1626→                <div className="space-y-2">
+  1627→                  <label className="text-sm font-medium">Raison sociale</label>
+  1628→                  <Input value={name} onChange={e => setName(e.target.value)} />
+  1629→                </div>
+  1630→                <div className="space-y-2">
+  1631→                  <label className="text-sm font-medium">NIF</label>
+  1632→                  <Input value={nif} onChange={e => setNif(e.target.value)} />
+  1633→                </div>
+  1634→              </div>
+  1635→              <div className="grid sm:grid-cols-2 gap-4">
+  1636→                <div className="space-y-2">
+  1637→                  <label className="text-sm font-medium">RCCM</label>
+  1638→                  <Input value={rccm} onChange={e => setRccm(e.target.value)} />
+  1639→                </div>
+  1640→                <div className="space-y-2">
+  1641→                  <label className="text-sm font-medium">Secteur</label>
+  1642→                  <Input value={sector} onChange={e => setSector(e.target.value)} />
+  1643→                </div>
+  1644→              </div>
+  1645→              <div className="grid sm:grid-cols-2 gap-4">
+  1646→                <div className="space-y-2">
+  1647→                  <label className="text-sm font-medium">Email facturation</label>
+  1648→                  <Input value={email} onChange={e => setEmail(e.target.value)} />
+  1649→                </div>
+  1650→                <div className="space-y-2">
+  1651→                  <label className="text-sm font-medium">Telephone principal</label>
+  1652→                  <Input value={phone} onChange={e => setPhone(e.target.value)} />
+  1653→                </div>
+  1654→              </div>
+  1655→              <div className="space-y-2">
+  1656→                <label className="text-sm font-medium">Adresse siege</label>
+  1657→                <Input value={address} onChange={e => setAddress(e.target.value)} />
+  1658→              </div>
+  1659→              <div className="flex items-center gap-3">
+  1660→                <Button className="gap-2" onClick={handleSave} disabled={saving}>
+  1661→                  {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+  1662→                  Sauvegarder
+  1663→                </Button>
+  1664→                {saveSuccess && <span className="text-sm text-emerald-600 font-medium">Sauvegarde avec succes !</span>}
+  1665→              </div>
+  1666→            </>
+  1667→          )}
+  1668→        </CardContent>
+  1669→      </Card>
+  1670→
+  1671→      <Card>
+  1672→        <CardHeader>
+  1673→          <CardTitle className="text-base">Notifications</CardTitle>
+  1674→        </CardHeader>
+  1675→        <CardContent className="space-y-4">
+  1676→          {[
+  1677→            { label: 'Notification de prise en charge', desc: 'Recevoir une alerte quand un livreur est assigne', defaultChecked: true },
+  1678→            { label: 'Notification de livraison', desc: 'Recevoir une alerte quand le pli est livre', defaultChecked: true },
+  1679→            { label: 'Rapport hebdomadaire par email', desc: 'Recapitulatif des courses de la semaine', defaultChecked: false },
+  1680→            { label: 'Alerte facture disponible', desc: 'Notification quand la facture mensuelle est prete', defaultChecked: true },
+  1681→          ].map(n => (
+  1682→            <div key={n.label} className="flex items-center justify-between py-1">
+  1683→              <div>
+  1684→                <p className="text-sm font-medium">{n.label}</p>
+  1685→                <p className="text-xs text-muted-foreground">{n.desc}</p>
+  1686→              </div>
+  1687→              <input type="checkbox" defaultChecked={n.defaultChecked} className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary" />
+  1688→            </div>
+  1689→          ))}
+  1690→        </CardContent>
+  1691→      </Card>
+  1692→
+  1693→      <Card className="border-emerald-200">
+  1694→        <CardHeader>
+  1695→          <CardTitle className="text-base flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald-600" /> WhatsApp Business</CardTitle>
+  1696→          <CardDescription>Configurez le numero WhatsApp pour recevoir les commandes de vos clients</CardDescription>
+  1697→        </CardHeader>
+  1698→        <CardContent className="space-y-4">
+  1699→          <div className="space-y-2">
+  1700→            <label className="text-sm font-medium">Numero WhatsApp (avec indicatif, sans +)</label>
+  1701→            <Input placeholder="242066120648" defaultValue="242066105805" />
+  1702→            <p className="text-xs text-muted-foreground">Format : indicatif pays + numero. Ex: 242066120648 pour le Congo</p>
+  1703→          </div>
+  1704→          <div className="bg-emerald-50 rounded-lg p-3 text-sm">
+  1705→            <p className="font-medium text-emerald-800 mb-1">Comment ca marche ?</p>
+  1706→            <p className="text-xs text-emerald-700 leading-relaxed">Le bouton "Ouvrir WhatsApp" dans la sidebar ouvre WhatsApp avec un message pre-rempli. Vos clients peuvent ainsi commander directement. Pour un bot automatique, vous pourrez connecter l'API WhatsApp Business plus tard.</p>
+  1707→          </div>
+  1708→          <Button variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => window.open('https://wa.me/242066105805?text=Test', '_blank')}>
+  1709→            <MessageCircle className="w-4 h-4" /> Tester le lien WhatsApp
+  1710→          </Button>
+  1711→        </CardContent>
+  1712→      </Card>
+  1713→
+  1714→      <Card className="border-red-200">
+  1715→        <CardHeader>
+  1716→          <CardTitle className="text-base text-red-600">Zone dangereuse</CardTitle>
+  1717→        </CardHeader>
+  1718→        <CardContent className="space-y-3">
+  1719→          <p className="text-sm text-muted-foreground">Ces actions sont irreversibles.</p>
+  1720→          <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 gap-2" onClick={handleLogout}>
+  1721→            <LogOut className="w-4 h-4" /> Deconnecter le compte
+  1722→          </Button>
+  1723→        </CardContent>
+  1724→      </Card>
+  1725→    </div>
+  1726→  );
+  1727→}
+  1728→
+  1729→// ============================================================
+  1730→// DISPATCH VIEW (admin only)
+  1731→// ============================================================
+  1732→function DispatchView() {
+  1733→  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  1734→  const [livreurs, setLivreurs] = useState<Livreurs[]>([]);
+  1735→  const [dispatchStats, setDispatchStats] = useState<DispatchStats | null>(null);
+  1736→  const [loading, setLoading] = useState(true);
+  1737→  const [assigning, setAssigning] = useState<string | null>(null);
+  1738→  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  1739→  const [selectedDelivery, setSelectedDelivery] = useState<Delivery | null>(null);
+  1740→  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  1741→  const [filterStatus, setFilterStatus] = useState('tous');
+  1742→
+  1743→  const fetchData = useCallback(async () => {
+  1744→    try {
+  1745→      setLoading(true);
+  1746→      const [res, statsRes] = await Promise.all([
+  1747→        fetch('/api/dispatch'),
+  1748→        fetch('/api/dispatch/stats'),
+  1749→      ]);
+  1750→      if (res.ok) {
+  1751→        const data = await res.json();
+  1752→        setDeliveries(data.livraisons || []);
+  1753→        setLivreurs(data.livreurs || []);
+  1754→      }
+  1755→      if (statsRes.ok) {
+  1756→        const statsData = await statsRes.json();
+  1757→        setDispatchStats(statsData);
+  1758→      }
+  1759→    } catch { /* ignore */ } finally { setLoading(false); }
+  1760→  }, []);
+  1761→
+  1762→  useEffect(() => { fetchData(); }, [fetchData]);
+  1763→  useEffect(() => {
+  1764→    const interval = setInterval(fetchData, 15000);
+  1765→    return () => clearInterval(interval);
+  1766→  }, [fetchData]);
+  1767→
+  1768→  const handleAssign = async (livreurId: string) => {
+  1769→    if (!selectedDelivery) return;
+  1770→    setAssigning(selectedDelivery.id);
+  1771→    try {
+  1772→      const res = await fetch('/api/dispatch/assign', {
+  1773→        method: 'PATCH',
+  1774→        headers: { 'Content-Type': 'application/json' },
+  1775→        body: JSON.stringify({ deliveryId: selectedDelivery.id, livreurId }),
+  1776→      });
+  1777→      if (res.ok) {
+  1778→        toast.success(`Course ${selectedDelivery.reference} assignee avec succes`);
+  1779→        setAssignDialogOpen(false);
+  1780→        fetchData();
+  1781→      } else {
+  1782→        const data = await res.json();
+  1783→        toast.error(data.erreur || "Erreur lors de l'assignation");
+  1784→      }
+  1785→    } catch { toast.error('Erreur serveur'); } finally { setAssigning(null); }
+  1786→  };
+  1787→
+  1788→  const handleStatusChange = async (deliveryId: string, newStatus: string, ref: string) => {
+  1789→    setStatusUpdating(deliveryId);
+  1790→    try {
+  1791→      const res = await fetch(`/api/dispatch/${deliveryId}/status`, {
+  1792→        method: 'PATCH',
+  1793→        headers: { 'Content-Type': 'application/json' },
+  1794→        body: JSON.stringify({ status: newStatus }),
+  1795→      });
+  1796→      if (res.ok) {
+  1797→        toast.success(`Course ${ref} - ${statusConfig[newStatus]?.label || newStatus}`);
+  1798→        fetchData();
+  1799→      } else {
+  1800→        const data = await res.json();
+  1801→        toast.error(data.erreur || 'Erreur de changement de statut');
+  1802→      }
+  1803→    } catch { toast.error('Erreur serveur'); } finally { setStatusUpdating(null); }
+  1804→  };
+  1805→
+  1806→  const priorityColors: Record<string, string> = {
+  1807→    urgente: 'border-l-4 border-l-red-500',
+  1808→    haute: 'border-l-4 border-l-amber-500',
+  1809→    normale: 'border-l-4 border-l-sky-400',
+  1810→  };
+  1811→  const availableLivreurs = livreurs.filter(l => l.status === 'disponible');
+  1812→  const getNextStatus = (status: string): string | null => {
+  1813→    const map: Record<string, string> = { en_attente: 'prise_en_charge', prise_en_charge: 'en_course', en_course: 'livre' };
+  1814→    return map[status] || null;
+  1815→  };
+  1816→  const filtered = filterStatus === 'tous' ? deliveries : deliveries.filter(d => d.status === filterStatus);
+  1817→  const maxZone = Math.max(...(dispatchStats?.repartitionZones || []).map(z => z.count), 1);
+  1818→  const zoneColors = ['bg-primary', 'bg-emerald-500', 'bg-amber-500', 'bg-sky-500', 'bg-purple-500'];
+  1819→  const zonePositions = [[30, 30], [70, 25], [25, 70], [65, 65], [50, 50]];
+  1820→
+  1821→  return (
+  1822→    <div className="space-y-6">
+  1823→      <div className="flex items-center justify-between flex-wrap gap-3">
+  1824→        <div>
+  1825→          <h2 className="text-xl font-bold">Centre de Dispatch</h2>
+  1826→          <p className="text-sm text-muted-foreground mt-1">Gestion des courses et assignation des livreurs en temps reel</p>
+  1827→        </div>
+  1828→        <div className="flex gap-2">
+  1829→          <Badge variant="outline" className="gap-1.5 text-xs"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" /> Live</Badge>
+  1830→          <Button variant="outline" size="sm" className="gap-1.5" onClick={fetchData}><Eye className="w-3.5 h-3.5" /> Rafraichir</Button>
+  1831→        </div>
+  1832→      </div>
+  1833→
+  1834→      {/* KPI Row */}
+  1835→      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+  1836→        <StatCard title="En attente" value={String(dispatchStats?.totalEnAttente ?? 0)} subtitle="A assigner" icon={<Clock className="w-5 h-5" />} loading={loading} />
+  1837→        <StatCard title="Actives" value={String(dispatchStats?.totalActives ?? 0)} subtitle="En cours" icon={<Navigation className="w-5 h-5" />} loading={loading} />
+  1838→        <StatCard title="Livreurs dispo" value={String(dispatchStats?.totalLivreursDispo ?? 0)} subtitle={"sur " + livreurs.length} icon={<Bike className="w-5 h-5" />} loading={loading} />
+  1839→        <StatCard title="Tps moyen" value={dispatchStats ? `${dispatchStats.tempsMoyenAssignation} min` : '...'} subtitle="Assignation" icon={<Timer className="w-5 h-5" />} loading={loading} />
+  1840→        <StatCard title="Revenus" value={dispatchStats ? `${(dispatchStats.revenusAujourdhui / 1000).toFixed(1)} k` : '...'} subtitle="FCFA aujourd'hui" icon={<CircleDollarSign className="w-5 h-5" />} loading={loading} />
+  1841→      </div>
+  1842→
+  1843→      <div className="grid lg:grid-cols-4 gap-6">
+  1844→        {/* Zone Map */}
+  1845→        <Card className="lg:col-span-1">
+  1846→          <CardHeader className="pb-3">
+  1847→            <CardTitle className="text-base font-semibold">Repartition zones</CardTitle>
+  1848→          </CardHeader>
+  1849→          <CardContent className="space-y-3">
+  1850→            {(dispatchStats?.repartitionZones || []).length === 0 ? (
+  1851→              <p className="text-sm text-muted-foreground text-center py-4">Aucune donnee</p>
+  1852→            ) : (
+  1853→              (dispatchStats?.repartitionZones || []).map((z, i) => (
+  1854→                <div key={z.zone}>
+  1855→                  <div className="flex items-center justify-between text-xs mb-1">
+  1856→                    <span className="font-medium">{z.zone}</span>
+  1857→                    <span className="text-muted-foreground">{z.count}</span>
+  1858→                  </div>
+  1859→                  <div className="h-6 bg-muted rounded-lg overflow-hidden">
+  1860→                    <div className={`h-full rounded-lg ${zoneColors[i % zoneColors.length]} transition-all duration-500 flex items-center justify-end pr-1.5`} style={{ width: `${Math.max((z.count / maxZone) * 100, 10)}%` }}>
+  1861→                      <span className="text-[9px] text-white font-bold">{Math.round((z.count / maxZone) * 100)}%</span>
+  1862→                    </div>
+  1863→                  </div>
+  1864→                </div>
+  1865→              ))
+  1866→            )}
+  1867→            <Separator />
+  1868→            <div className="relative w-full h-32 bg-gradient-to-br from-emerald-50 via-sky-50 to-amber-50 rounded-xl overflow-hidden border">
+  1869→              <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+  1870→                <defs><pattern id="dgrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#16a34a" strokeWidth="0.3"/></pattern></defs>
+  1871→                <rect width="100%" height="100%" fill="url(#dgrid)" />
+  1872→              </svg>
+  1873→              {(dispatchStats?.repartitionZones || []).map((z, i) => {
+  1874→                const pos = zonePositions[i % zonePositions.length];
+  1875→                const size = Math.max(8, Math.min(24, z.count * 6));
+  1876→                return (
+  1877→                  <div key={z.zone} className="absolute flex flex-col items-center" style={{ left: `${pos[0]}%`, top: `${pos[1]}%`, transform: 'translate(-50%, -50%)' }}>
+  1878→                    <div className="rounded-full bg-primary/80 text-white flex items-center justify-center font-bold text-[10px] animate-pulse" style={{ width: size, height: size }}>{z.count}</div>
+  1879→                    <span className="text-[8px] mt-0.5 font-medium text-muted-foreground whitespace-nowrap">{z.zone}</span>
+  1880→                  </div>
+  1881→                );
+  1882→              })}
+  1883→            </div>
+  1884→          </CardContent>
+  1885→        </Card>
+  1886→
+  1887→        {/* Deliveries list */}
+  1888→        <Card className="lg:col-span-2">
+  1889→          <CardHeader className="pb-3">
+  1890→            <div className="flex items-center justify-between">
+  1891→              <CardTitle className="text-base font-semibold">Courses a traiter ({filtered.length})</CardTitle>
+  1892→            </div>
+  1893→            <div className="flex flex-wrap gap-1.5 pt-2">
+  1894→              {['tous', 'en_attente', 'prise_en_charge', 'en_course'].map(f => (
+  1895→                <Button key={f} variant={filterStatus === f ? 'default' : 'outline'} size="sm" onClick={() => setFilterStatus(f)} className="text-[11px] h-7">
+  1896→                  {f === 'tous' ? 'Toutes' : (statusConfig[f]?.label || f)}
+  1897→                </Button>
+  1898→              ))}
+  1899→            </div>
+  1900→          </CardHeader>
+  1901→          <CardContent className="max-h-[550px] overflow-y-auto">
+  1902→            {loading ? (
+  1903→              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="p-4 rounded-xl bg-muted/50"><Skeleton className="h-4 w-1/3 mb-2" /><Skeleton className="h-3 w-2/3" /></div>))}</div>
+  1904→            ) : filtered.length === 0 ? (
+  1905→              <div className="text-center py-12 text-muted-foreground"><Truck className="w-10 h-10 mx-auto mb-2 opacity-30" /><p className="text-sm">Aucune course a traiter</p></div>
+  1906→            ) : (
+  1907→              <div className="space-y-3">
+  1908→                {filtered.map(d => {
+  1909→                  const nextStatus = getNextStatus(d.status);
+  1910→                  return (
+  1911→                    <div key={d.id} className={`rounded-xl bg-muted/50 hover:bg-muted transition-colors p-4 ${priorityColors[d.priority] || ''}`}>
+  1912→                      <div className="flex items-start justify-between gap-3">
+  1913→                        <div className="flex-1 min-w-0">
+  1914→                          <div className="flex items-center gap-2 flex-wrap">
+  1915→                            <span className="text-sm font-bold">{d.reference}</span>
+  1916→                            <StatusBadge status={d.status} />
+  1917→                            {d.priority === 'urgente' && <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[10px]">URGENT</Badge>}
+  1918→                            {d.priority === 'haute' && <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">HAUTE</Badge>}
+  1919→                            {d.company && <span className="text-[10px] text-muted-foreground">{d.company.name}</span>}
+  1920→                          </div>
+  1921→                          <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground">
+  1922→                            <MapPin className="w-3 h-3 shrink-0" /><span className="truncate">{d.pickup}</span>
+  1923→                            <ChevronRight className="w-3 h-3 shrink-0" /><span className="truncate">{d.dropoff}</span>
+  1924→                          </div>
+  1925→                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+  1926→                            <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{formatDate(d.createdAt)}</span>
+  1927→                            <span className="font-semibold text-foreground">{formatPrice(d.price)} FCFA</span>
+  1928→                            {d.livreur && <span className="flex items-center gap-1"><Bike className="w-3 h-3" />{d.livreur.name}</span>}
+  1929→                          </div>
+  1930→                        </div>
+  1931→                        <div className="flex flex-col gap-1.5 shrink-0">
+  1932→                          {d.status === 'en_attente' && (
+  1933→                            <Button size="sm" className="h-7 text-xs gap-1" onClick={() => { setSelectedDelivery(d); setAssignDialogOpen(true); }}><Users className="w-3 h-3" /> Assigner</Button>
+  1934→                          )}
+  1935→                          {nextStatus && (
+  1936→                            <Button size="sm" variant="outline" className="h-7 text-xs" disabled={statusUpdating === d.id} onClick={() => handleStatusChange(d.id, nextStatus, d.reference)}>
+  1937→                              {statusUpdating === d.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+  1938→                              {nextStatus === 'prise_en_charge' && 'Prendre en charge'}
+  1939→                              {nextStatus === 'en_course' && 'Demarrer course'}
+  1940→                              {nextStatus === 'livre' && 'Confirmer livraison'}
+  1941→                            </Button>
+  1942→                          )}
+  1943→                        </div>
+  1944→                      </div>
+  1945→                    </div>
+  1946→                  );
+  1947→                })}
+  1948→              </div>
+  1949→            )}
+  1950→          </CardContent>
+  1951→        </Card>
+  1952→
+  1953→        {/* Right: livreurs panel */}
+  1954→        <Card>
+  1955→          <CardHeader className="pb-3">
+  1956→            <CardTitle className="text-base font-semibold">Equipe livreurs</CardTitle>
+  1957→            <CardDescription>{availableLivreurs.length} pret(s) sur {livreurs.length}</CardDescription>
+  1958→          </CardHeader>
+  1959→          <CardContent className="max-h-[480px] overflow-y-auto">
+  1960→            {loading ? (
+  1961→              <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => (<div key={i} className="flex items-center gap-3"><Skeleton className="w-9 h-9 rounded-full" /><Skeleton className="h-4 w-28" /></div>))}</div>
+  1962→            ) : livreurs.length === 0 ? (
+  1963→              <p className="text-sm text-muted-foreground text-center py-8">Aucun livreur</p>
+  1964→            ) : (
+  1965→              <div className="space-y-2">
+  1966→                {livreurs.map(l => (
+  1967→                  <div key={l.id} className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${l.status === 'disponible' ? 'bg-emerald-50 hover:bg-emerald-100' : 'bg-muted/50 opacity-60'}`}>
+  1968→                    <div className="relative">
+  1969→                      <Avatar className="w-9 h-9"><AvatarFallback className="text-[10px] bg-primary/10 text-primary font-semibold">{l.name.split(' ').map(n => n[0]).join('')}</AvatarFallback></Avatar>
+  1970→                      <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${l.status === 'disponible' ? 'bg-emerald-500' : l.status === 'en_course' ? 'bg-amber-500' : 'bg-gray-400'}`} />
+  1971→                    </div>
+  1972→                    <div className="flex-1 min-w-0">
+  1973→                      <p className="text-sm font-semibold truncate">{l.name}</p>
+  1974→                      <p className="text-[11px] text-muted-foreground">{l.vehicle} - {l.zone}</p>
+  1975→                      <div className="flex items-center gap-2 mt-0.5">
+  1976→                        <div className="flex items-center gap-0.5"><Star className="w-3 h-3 text-amber-500 fill-amber-500" /><span className="text-[10px] font-medium">{l.rating}</span></div>
+  1977→                        {l.activeDeliveries > 0 && <span className="text-[10px] text-muted-foreground">{l.activeDeliveries} active(s)</span>}
+  1978→                      </div>
+  1979→                    </div>
+  1980→                  </div>
+  1981→                ))}
+  1982→              </div>
+  1983→            )}
+  1984→          </CardContent>
+  1985→        </Card>
+  1986→      </div>
+  1987→
+  1988→      {/* Assign Dialog */}
+  1989→      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+  1990→        <DialogContent>
+  1991→          <DialogHeader>
+  1992→            <DialogTitle>Assigner un livreur</DialogTitle>
+  1993→            <DialogDescription>Course {selectedDelivery?.reference}</DialogDescription>
+  1994→          </DialogHeader>
+  1995→          <div className="max-h-64 overflow-y-auto space-y-2">
+  1996→            {availableLivreurs.length === 0 ? (
+  1997→              <p className="text-sm text-muted-foreground text-center py-4">Aucun livreur disponible</p>
+  1998→            ) : (
+  1999→              availableLivreurs.map(l => (
+  2000→                <button key={l.id} className="w-full flex items-center gap-3 p-3 rounded-xl border hover:bg-muted transition-colors text-left" onClick={() => handleAssign(l.id)} disabled={assigning === selectedDelivery?.id}>
+
+[showing lines 1-2000 of 2966; use offset=2001 with limit to continue reading]
