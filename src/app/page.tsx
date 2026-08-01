@@ -1698,14 +1698,14 @@ function ParametresView() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm font-medium">Numero WhatsApp (avec indicatif, sans +)</label>
-            <Input placeholder="242066120648" defaultValue="242066120648" />
+            <Input placeholder="242066120648" defaultValue="242066105805" />
             <p className="text-xs text-muted-foreground">Format : indicatif pays + numero. Ex: 242066120648 pour le Congo</p>
           </div>
           <div className="bg-emerald-50 rounded-lg p-3 text-sm">
             <p className="font-medium text-emerald-800 mb-1">Comment ca marche ?</p>
             <p className="text-xs text-emerald-700 leading-relaxed">Le bouton "Ouvrir WhatsApp" dans la sidebar ouvre WhatsApp avec un message pre-rempli. Vos clients peuvent ainsi commander directement. Pour un bot automatique, vous pourrez connecter l'API WhatsApp Business plus tard.</p>
           </div>
-          <Button variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => window.open('https://wa.me/242066120648?text=Test', '_blank')}>
+          <Button variant="outline" className="gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => window.open('https://wa.me/242066105805?text=Test', '_blank')}>
             <MessageCircle className="w-4 h-4" /> Tester le lien WhatsApp
           </Button>
         </CardContent>
@@ -2913,7 +2913,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex bg-background">
-      <Sidebar current={currentView} onNavigate={setCurrentView} open={sidebarOpen} onClose={() => setSidebarOpen(false)} companyName={companyName} planLabel={planLabel} userRole={userRole} pendingCount={pendingCount} whatsappNumber={userRole === 'admin' ? '242066120648' : '242066120648'} />
+      <Sidebar current={currentView} onNavigate={setCurrentView} open={sidebarOpen} onClose={() => setSidebarOpen(false)} companyName={companyName} planLabel={planLabel} userRole={userRole} pendingCount={pendingCount} whatsappNumber='242066105805' />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
