@@ -51,4 +51,20 @@ prompt
 
 server.log
 # Skills directory
-/skills/
+/skills/node_modules/
+.next/
+db/
+.env
+tool-results/
+agent-ctx/
+mini-services/
+examples/
+*.bak
+*.log
+bun.lock
+.env.local
+scripts/test-*.py
+scripts/test-*.ts
+scripts/rest_of_file.py
+scripts/change-admin.ts
+worklog.md

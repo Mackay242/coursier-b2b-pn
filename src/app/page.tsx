@@ -24,7 +24,9 @@ import {
   Timer, MapPinned, LayoutDashboard, ChevronLeft, FileCheck2,
   CircleDollarSign, Wallet, MessageCircle, Download, Loader2, RefreshCw
 } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+// Socket.io désactivé sur Vercel (serverless — pas de WebSocket persistant)
+// En local, les mises à jour se font par polling automatique
+// import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
@@ -714,8 +716,6 @@ function DashboardView({ companyName, planLabel, companyData, onRefreshDeliverie
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const socketRef = useRef<Socket | null>(null);
-
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/dashboard/stats');
@@ -746,29 +746,14 @@ function DashboardView({ companyName, planLabel, companyData, onRefreshDeliverie
     load();
   }, [fetchStats, fetchDeliveries]);
 
-  // Socket.io integration
+  // Auto-refresh (remplace Socket.io sur Vercel)
   useEffect(() => {
-    const socket = io('/?XTransformPort=3003');
-    socketRef.current = socket;
-
-    socket.on('connect', () => {
-      console.log('Socket connected');
-    });
-
-    socket.on('status:update', () => {
-      fetchDeliveries();
+    const interval = setInterval(() => {
       fetchStats();
-      onRefreshDeliveries?.();
-    });
-
-    socket.on('location:update', () => {
-      // Could update the map tracking dot here
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, [fetchDeliveries, fetchStats, onRefreshDeliveries]);
+      fetchDeliveries();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchStats, fetchDeliveries]);
 
   const planUsage = stats ? stats.coursesMensuelles.pourcentage : 0;
   const monthlyCourses = stats?.coursesMensuelles.utilisees || 0;
@@ -3047,47 +3032,18 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [userRole]);
 
-  // Global socket listeners for toasts
+  // Polling global (remplace Socket.io sur Vercel)
   useEffect(() => {
     if (!session) return;
-    const socket = io('/?XTransformPort=3003');
-
-    socket.on('status:update', (data: any) => {
-      const ref = data.reference || data.livraison?.reference || '';
-      const newStatus = data.newStatus || data.status || '';
-      const label = statusConfig[newStatus]?.label || newStatus;
-      toast.info(`Course ${ref} - ${label}`);
+    const interval = setInterval(() => {
       refreshDeliveries();
-      // Refresh pending count for admin
       if (userRole === 'admin') {
         fetch('/api/dispatch').then(r => r.json()).then(d => {
           setPendingCount((d.livraisons || []).filter((x: Delivery) => x.status === 'en_attente').length);
         }).catch(() => {});
       }
-    });
-
-    socket.on('delivery:created', (data: any) => {
-      if (userRole === 'admin') {
-        const ref = data.reference || data.livraison?.reference || 'Nouvelle course';
-        toast.success(`Nouvelle course: ${ref}`);
-        refreshDeliveries();
-        fetch('/api/dispatch').then(r => r.json()).then(d => {
-          setPendingCount((d.livraisons || []).filter((x: Delivery) => x.status === 'en_attente').length);
-        }).catch(() => {});
-      }
-    });
-
-    socket.on('new:delivery', (data: any) => {
-      if (userRole === 'admin') {
-        const ref = data.reference || data.livraison?.reference || 'Nouvelle course';
-        toast.success(`Nouvelle course: ${ref}`);
-        refreshDeliveries();
-      }
-    });
-
-    return () => {
-      socket.disconnect();
-    };
+    }, 15000);
+    return () => clearInterval(interval);
   }, [session, userRole, refreshDeliveries]);
 
   // Show loading or auth form
