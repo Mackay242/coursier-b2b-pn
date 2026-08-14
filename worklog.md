@@ -340,3 +340,89 @@ Stage Summary:
 - Recherche globale sur reference, adresse, destinataire, telephone, description
 - Gestion entreprises avec statistiques et barre de forfait
 - Fichier page.tsx ~2900 lignes, build propre
+---
+Task ID: 2-a
+Agent: API Services & Tasks
+Task: Créer les routes API PRODESK (Services, Tâches, Mandats, SLA)
+
+Work Log:
+- Créé /home/z/my-project/src/app/api/services/route.ts
+  - GET: catalogue des services actifs, ordonnés par `order`, avec count de tâches par service via _count
+  - Route publique (pas d'auth requise)
+- Créé /home/z/my-project/src/app/api/services/seed/route.ts
+  - POST: admin uniquement, sème les 6 familles de services PRODESK si elles n'existent pas encore
+  - Services: Bureau Digital (monitor, 5000F, 4h), CNSS/Social (shield, 7500F, 4h), Fiscalité (calculator, 10000F, 4h), SFEC (receipt, 15000F, 24h, récurrent), Gestion Documentaire (folder, 2500F, 4h), Secrétariat (briefcase, 5000F, 4h)
+  - Retourne { crees: [...], ignores: [...], total: 6 }
+- Créé /home/z/my-project/src/app/api/tasks/route.ts
+  - GET: tâches avec filtres (status, family, priority, search), pagination. Client → tâches de son entreprise uniquement, Admin → toutes
+  - POST: création tâche par client/admin. Référence auto TSK-YYYYMMDD-NNN. SLA deadline calculé depuis service.slaHours ou slaUrgentHours. Timeline initiale 'demande_creee'. Notification admin automatique
+- Créé /home/z/my-project/src/app/api/tasks/[id]/route.ts
+  - GET: détail complet (service, company, client, mandate, assignedUser, timeline, documents). Vérification propriétaire ou admin
+  - PATCH: admin uniquement. Mise à jour statut/assignation/priorité. Auto-timeline sur transitions. Vérification SLA breach. Notification client sur changement de statut
+- Créé /home/z/my-project/src/app/api/tasks/[id]/documents/route.ts
+  - GET: liste des documents d'une tâche (owner ou admin)
+  - POST: ajout document (name, type, fileUrl, fileSize, mimeType) — owner ou admin
+- Créé /home/z/my-project/src/app/api/mandates/route.ts
+  - GET: liste mandats avec filtres (status, type), pagination. Client → son entreprise, Admin → tous
+  - POST: création mandat avec référence auto MND-YYYYMMDD-NNN. Client ou admin
+  - PATCH: admin uniquement. Mise à jour statut (actif/expire/revoque). Notification client
+- Créé /home/z/my-project/src/app/api/admin/sla/route.ts
+  - GET: admin uniquement. Monitoring SLA complet:
+    - breachedTasks: tâches actives avec SLA dépassé + auto-flag slaBreached
+    - approachingTasks: tâches dont le SLA expire dans l'heure
+    - statsByFamily: count par famille + temps de réponse moyen (création → premier en_traitement)
+    - summary: totalActive, totalBreached, totalCompleted, completedOnTime, breachRate, complianceRate
+
+Stage Summary:
+- 7 fichiers de routes API créés couvrant le module PRODESK complet
+- Authentification et autorisation par rôle sur toutes les routes (NextAuth + getServerSession)
+- Références auto-générées: TSK-YYYYMMDD-NNN et MND-YYYYMMDD-NNN
+- Timeline automatique sur chaque création/transition de tâche
+- Notifications automatiques: admin à la création, client au changement de statut
+- SLA: calcul du deadline à la création, détection breach à la mise à jour, monitoring complet
+- ESLint: 0 erreurs sur les nouveaux fichiers
+- Tous les messages en français, variables en anglais
+---
+Task ID: 4-a
+Agent: UI PRODESK Views
+Task: Créer les 6 composants de vues PRODESK dans prodesk-views.tsx
+
+Work Log:
+- Créé /home/z/my-project/src/components/prodesk-views.tsx (~750 lignes)
+- 6 composants exportés nommément : ServicesView, NouvelleTacheView, TachesView, AdminTachesView, MandatsView, SLAMonitorView
+- ServicesView : grille responsive 2/3 colonnes, cartes avec icône famille, prix FCFA, SLA, badge Récurrent, bordure colorée par famille, bouton Nouvelle demande, skeletons de chargement
+- NouvelleTacheView : formulaire complet (sélection service avec icône+prix, titre, description, priorité, urgent toggle, mode paiement, référence mandat, notes), validation, POST /api/tasks, toast succès, réinitialisation formulaire
+- TachesView : filtres (recherche, status pills, famille select), liste de tâches avec référence, titre, famille badge, statut badge, SLA countdown (vert/ambre/rouge), expansion inline avec détail complet (timeline, documents, mandat, note de completion), pagination
+- AdminTachesView : même filtres + filtre entreprise, barre de 4 KPIs (total, en attente, en cours, SLA brisée), boutons de changement de statut inline sur chaque tâche (PATCH /api/tasks/[id]), highlight rouge SLA brisée, expansion détail complet avec infos entreprise/client
+- MandatsView : liste avec référence, type badge, statut badge (actif=vert/expire=ambre/revoque=rouge), entreprise, période, compteur tâches ; formulaire de création inline (type, dates, description) POST /api/mandates ; actions admin (marquer expiré, révoquer) PATCH /api/mandates ; pagination
+- SLAMonitorView : 4 KPI cards (tâches actives, SLA dépassé, taux conformité avec Progress bar, temps moyen réponse) ; onglets : SLA dépassé (rouge), approchant (ambre), par famille (barres horizontales colorées) ; refresh button ; données de /api/admin/sla
+- Helpers : formatPrice, formatDate, formatDateFull, taskStatusConfig, familyConfig, serviceIconMap, priorityConfig, paymentModeLabels, mandateTypeLabels, mandateStatusConfig, timelineEventLabels, TaskStatusBadge, FamilyBadge
+- Interfaces : Service, Task, TaskTimelineItem, TaskDocumentItem, Mandate
+- Tous les textes en français, code en anglais
+- Utilisation exclusive des composants shadcn/ui (Card, Badge, Button, Input, Textarea, Select, Tabs, Progress, Separator, ScrollArea, Skeleton)
+- Loading states avec Skeleton, error handling avec try/catch et toast.error(), useCallback sur les fonctions fetch
+- Design responsive mobile-first (grid cols-1/2/3, flex-col/row, overflow-x-auto sur filtres)
+
+Stage Summary:
+- Fichier unique /src/components/prodesk-views.tsx avec 6 composants exportés
+- Chaque composant est self-contained (fetch ses propres données)
+- Intégration complète avec les API existantes (/api/services, /api/tasks, /api/mandates, /api/admin/sla)
+- Style cohérent avec l'application existante (mêmes patterns de code, mêmes composants UI)
+- SLA breach highlighté en rouge sur les vues taches et admin
+- Monitoring SLA avec onglets et KPIs visuels
+---
+Task ID: 5-6
+Agent: WhatsApp + Reports + Seed
+Task: Update WhatsApp Bot with admin commands, add task stats to monthly reports, fix services seed endpoint
+
+Work Log:
+- Updated /src/lib/whatsapp-service.ts: expanded ParsedCommand action union with 'service_list', 'task_create', 'task_track', 'task_history'; added 5 new trigger groups to parseWhatsAppCommand (service/services/admin/administratif/demarche → service_list, demande/tache/nouvelle_tache → task_create, suivi_tache/etat_tache+TSK-xxx → task_track, mes_taches/mes demandes → task_history); added 6 response builders (buildServiceListResponse, buildTaskCreateIncompleteResponse, buildTaskCreateConfirmResponse, buildTaskTrackResponse, buildTaskHistoryResponse, getServiceFamilies); updated buildAideResponse with new admin command section
+- Updated /src/app/api/whatsapp/webhook/route.ts: imported new builders + getServiceFamilies; added 4 new switch cases (service_list, task_create, task_track, task_history); added 3 handler functions: handleTaskCreate (validates service 1-6, finds user/company, generates TSK-YYYYMMDD-NNN ref, calculates SLA based on priority, creates task + timeline + admin notification), handleTaskTrack (looks up task by reference with timeline), handleTaskHistory (finds user by phone, returns their 10 most recent tasks)
+- Updated /src/app/api/reports/monthly/route.ts: added task query for current month; added tachesParFamille (count by family), tachesTotal, tachesTerminees, tachesEnCours, slaRespecte (percentage of completed non-breached tasks, rounded to 1 decimal) to the response JSON
+- Updated /src/app/api/services/seed/route.ts: replaced find+create pattern with db.service.upsert using slug as unique key, making the endpoint fully idempotent
+
+Stage Summary:
+- WhatsApp Bot now supports 4 new administrative commands: services (list), demande (create task), suivi_tache (track), mes_taches (history)
+- Task creation via WhatsApp generates proper TSK-YYYYMMDD-NNN references and SLA deadlines
+- Monthly reports API now includes task statistics alongside delivery statistics
+- Services seed endpoint is idempotent via upsert (no more skip/create distinction)

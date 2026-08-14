@@ -168,6 +168,34 @@ export async function GET(request: NextRequest) {
       revenuPrecedent: prevRevenu,
     }
 
+    // === Tâches administratives du mois ===
+    const tasks = await db.task.findMany({
+      where: {
+        createdAt: {
+          gte: periodStart,
+          lte: periodEnd,
+        },
+        ...companyFilter,
+      },
+    })
+
+    // Tâches par famille
+    const tachesParFamille: Record<string, number> = {}
+    for (const t of tasks) {
+      tachesParFamille[t.family] = (tachesParFamille[t.family] || 0) + 1
+    }
+
+    // Statistiques tâches
+    const tachesTotal = tasks.length
+    const tachesTerminees = tasks.filter((t) => t.status === 'termine').length
+    const tachesEnCours = tasks.filter((t) => ['en_attente', 'en_cours', 'en_validation'].includes(t.status)).length
+
+    // SLA respecté : tâches terminées sans breach
+    const completedTasks = tasks.filter((t) => t.status === 'termine')
+    const slaRespecte = completedTasks.length > 0
+      ? ((completedTasks.filter((t) => !t.slaBreached).length / completedTasks.length) * 100)
+      : 100
+
     return NextResponse.json({
       periode: `${String(targetMonth).padStart(2, '0')}/${targetYear}`,
       entrepriseId: companyId || null,
@@ -179,6 +207,12 @@ export async function GET(request: NextRequest) {
       topDestinations,
       repartitionHebdomadaire: weeklyBreakdown,
       comparaisonMoisPrecedent: comparison,
+      // Task statistics (PRODESK)
+      tachesParFamille,
+      tachesTotal,
+      tachesTerminees,
+      tachesEnCours,
+      slaRespecte: Math.round(slaRespecte * 10) / 10,
     })
   } catch (error) {
     console.error('Erreur GET /api/reports/monthly:', error)

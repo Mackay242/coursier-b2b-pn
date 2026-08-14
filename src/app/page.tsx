@@ -22,7 +22,8 @@ import {
   ArrowUpRight, ArrowDownRight, Send, Star, CreditCard,
   Building2, Route, Calendar, Filter, Eye, Bike, Menu, X,
   Timer, MapPinned, LayoutDashboard, ChevronLeft, FileCheck2,
-  CircleDollarSign, Wallet, MessageCircle, Download, Loader2, RefreshCw
+  CircleDollarSign, Wallet, MessageCircle, Download, Loader2, RefreshCw,
+  Monitor, Calculator, FolderOpen, Briefcase, ClipboardList, Gavel, AlertTriangle
 } from 'lucide-react';
 // Socket.io désactivé sur Vercel (serverless — pas de WebSocket persistant)
 // En local, les mises à jour se font par polling automatique
@@ -31,11 +32,12 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/sonner';
 import TrackingMap from '@/components/tracking-map-dynamic';
+import { ServicesView, NouvelleTacheView, TachesView, AdminTachesView, MandatsView, SLAMonitorView } from '@/components/prodesk-views';
 
 // ============================================================
 // TYPES
 // ============================================================
-type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises' | 'whatsapp_bot';
+type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises' | 'whatsapp_bot' | 'services' | 'nouvelle_tache' | 'taches' | 'admin_taches' | 'mandats' | 'sla_monitor';
 
 interface Delivery {
   id: string;
@@ -613,10 +615,13 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
       { id: 'carte', label: 'Carte', icon: <MapPinned className="w-4 h-4" /> },
       { id: 'dispatch', label: 'Dispatch', icon: <Truck className="w-4 h-4" />, badge: pendingCount },
+      { id: 'admin_taches', label: 'Taches admin', icon: <ClipboardList className="w-4 h-4" /> },
       { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
       { id: 'livreurs', label: 'Livreurs', icon: <Bike className="w-4 h-4" /> },
       { id: 'entreprises', label: 'Entreprises', icon: <Building2 className="w-4 h-4" /> },
+      { id: 'mandats', label: 'Mandats', icon: <Gavel className="w-4 h-4" /> },
+      { id: 'sla_monitor', label: 'SLA', icon: <Timer className="w-4 h-4" /> },
       { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: <MessageCircle className="w-4 h-4" /> },
       { id: 'rapports', label: 'Rapports', icon: <BarChart3 className="w-4 h-4" /> },
       { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
@@ -629,6 +634,9 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
     return [
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
       { id: 'commander', label: 'Commander', icon: <Plus className="w-4 h-4" /> },
+      { id: 'services', label: 'Services admin', icon: <Briefcase className="w-4 h-4" /> },
+      { id: 'nouvelle_tache', label: 'Nouvelle tache', icon: <ClipboardList className="w-4 h-4" /> },
+      { id: 'taches', label: 'Mes taches', icon: <FileCheck2 className="w-4 h-4" /> },
       { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
       { id: 'forfaits', label: 'Forfaits', icon: <CreditCard className="w-4 h-4" /> },
@@ -3089,6 +3097,12 @@ export default function Home() {
     mes_courses: <MesCoursesView />,
     rapports: <RapportsView />,
     paiement: <PaiementView />,
+    services: <ServicesView />,
+    nouvelle_tache: <NouvelleTacheView />,
+    taches: <TachesView />,
+    admin_taches: <AdminTachesView />,
+    mandats: <MandatsView />,
+    sla_monitor: <SLAMonitorView />,
   };
 
   const pageTitle: Record<View, string> = {
@@ -3106,6 +3120,12 @@ export default function Home() {
     mes_courses: 'Mes courses',
     rapports: 'Rapports',
     paiement: 'Paiement',
+    services: 'Services administratifs',
+    nouvelle_tache: 'Nouvelle demande',
+    taches: 'Mes taches administratives',
+    admin_taches: 'Gestion des taches',
+    mandats: 'Mandats',
+    sla_monitor: 'Suivi SLA',
   };
 
   return (

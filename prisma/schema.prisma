@@ -23,6 +23,9 @@ model User {
   company         Company?
   notifications   Notification[]
   payments        Payment[]
+  tasks           Task[]
+  assignedTasks   Task[]  @relation("TaskAssignee")
+  mandates        Mandate[]
 }
 
 model Company {
@@ -35,7 +38,8 @@ model Company {
   email     String?
   phone     String?
   plan      String   @default("decouverte") // decouverte, business, premium
-  planLimit Int      @default(10)
+  planLimit Int      @default(10) // limite courses/mois
+  taskLimit Int      @default(5)  // limite taches admin/mois
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -43,6 +47,8 @@ model Company {
   user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   deliveries Delivery[]
   invoices   Invoice[]
+  tasks      Task[]
+  mandates   Mandate[]
 }
 
 model Livreur {
@@ -134,6 +140,7 @@ model Invoice {
   period    String
   amount    Int
   coursesCount Int
+  tasksCount   Int      @default(0)
   status    String   @default("en_attente") // en_attente, payee, en_retard
   paidDate  DateTime?
   createdAt DateTime @default(now())
@@ -145,5 +152,124 @@ model Invoice {
   company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   deliveries Delivery[]
+  tasks      Task[]
   payments   Payment[]
+}
+
+// ============================================
+// MODULES PRODESK — Services administratifs B2B
+// ============================================
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String   // Bureau Digital, CNSS/Social, Fiscalité, SFEC, Gestion Documentaire, Secrétariat
+  slug        String   @unique
+  family      String   // digital_office, cnss_social, fiscalite, sfec, documentaire, secretariat
+  description  String?
+  priceUnit   Int      @default(5000) // prix unitaire en FCFA
+  isRecurring Boolean  @default(false) // service récurrent (ex: télédéclaration mensuelle)
+  slaHours    Int      @default(4) // SLA en heures
+  slaUrgentHours Int   @default(1) // SLA urgent en heures
+  isActive    Boolean  @default(true)
+  icon        String   @default("folder") // icône pour l'UI
+  order       Int      @default(0) // ordre d'affichage
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks       Task[]
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  reference   String   @unique // TSK-YYYYMMDD-NNN
+  title       String
+  description  String?
+  family      String   // digital_office, cnss_social, fiscalite, sfec, documentaire, secretariat
+  status      String   @default("en_attente") // en_attente, en_cours, en_validation, termine, annule
+  priority    String   @default("normale") // normale, haute, urgente
+  urgent      Boolean  @default(false)
+
+  // Client & entreprise
+  clientId    String?
+  client      User?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  // Service & mandat
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  mandateId   String?
+  mandate     Mandate? @relation(fields: [mandateId], references: [id], onDelete: SetNull)
+
+  // SLA
+  slaDeadline  DateTime?
+  slaBreached Boolean  @default(false)
+
+  // Financier
+  price       Int      @default(0)
+  paymentMode String   @default("forfait") // forfait, mobile_money, virement
+
+  // Assigné à (admin/agent)
+  assignedTo  String?
+  assignedUser User?  @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+
+  // Facturation
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
+  // Preuve de complétion
+  completionNote String?
+  completedAt   DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  timeline    TaskTimeline[]
+  documents   TaskDocument[]
+}
+
+model TaskTimeline {
+  id        String   @id @default(cuid())
+  event     String   // demande_creee, pieces_controlees, mandat_verifie, en_traitement, soumis, valide, preuve_fournie, archive, annule
+  comment   String?
+  timestamp DateTime @default(now())
+
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model TaskDocument {
+  id        String   @id @default(cuid())
+  name      String   // nom du document
+  type      String   @default("autre") // quittance, declaration, mandat, facture, scan, autre
+  fileUrl   String? // URL du fichier stocké
+  fileSize  Int?     // taille en octets
+  mimeType  String?
+  createdAt DateTime @default(now())
+
+  taskId    String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Mandate {
+  id          String   @id @default(cuid())
+  reference   String   @unique // MND-YYYYMMDD-NNN
+  type        String   // fiscal, social, cnss, dgid, autre
+  description  String?
+  status      String   @default("actif") // actif, expire, revoque
+
+  // Sécurité : pas de partage de mots de passe
+  // Le mandat est un document d'autorisation, pas un accès direct
+
+  clientId    String?
+  client      User?    @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  companyId   String?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tasks       Task[]
 }

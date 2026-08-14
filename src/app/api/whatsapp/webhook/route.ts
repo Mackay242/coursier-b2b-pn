@@ -8,6 +8,12 @@ import {
   buildHistoriqueResponse,
   buildAnnulerResponse,
   buildUnknownResponse,
+  buildServiceListResponse,
+  buildTaskCreateIncompleteResponse,
+  buildTaskCreateConfirmResponse,
+  buildTaskTrackResponse,
+  buildTaskHistoryResponse,
+  getServiceFamilies,
   sendWhatsAppMessage,
   IncomingMessage,
   WhatsAppConfig,
@@ -111,6 +117,18 @@ async function processWhatsAppMessage(msg: IncomingMessage): Promise<string> {
   switch (command.action) {
     case 'aide':
       return buildAideResponse()
+
+    case 'service_list':
+      return buildServiceListResponse()
+
+    case 'task_create':
+      return await handleTaskCreate(msg, command.params)
+
+    case 'task_track':
+      return await handleTaskTrack(command.params.reference)
+
+    case 'task_history':
+      return await handleTaskHistory(msg.from)
 
     case 'commander':
       return await handleCommander(msg, command.params)
@@ -251,6 +269,188 @@ Aucune entreprise cliente n'est configurée dans le système. Contactez l'admini
     price: delivery.price,
     type: delivery.type,
   })
+}
+
+// ========================
+// ADMINISTRATIVE TASK HANDLERS
+// ========================
+
+// Create an administrative task via WhatsApp
+async function handleTaskCreate(
+  msg: IncomingMessage,
+  params: Record<string, string>
+): Promise<string> {
+  // Validate service number
+  if (!params.serviceNumber || !params.title) {
+    return buildTaskCreateIncompleteResponse(params)
+  }
+
+  const serviceNum = parseInt(params.serviceNumber, 10)
+  if (isNaN(serviceNum) || serviceNum < 1 || serviceNum > 6) {
+    return `⚠️ *Numéro de service invalide*
+
+Le service doit être un numéro entre 1 et 6.
+
+Tapez *services* pour voir la liste des services disponibles.`
+  }
+
+  const serviceFamily = getServiceFamilies()[serviceNum - 1]
+  if (!serviceFamily) {
+    return `⚠️ *Service introuvable*
+
+Tapez *services* pour voir la liste des services disponibles.`
+  }
+
+  // Determine priority and SLA hours
+  const priority = (params.priority === 'urgente' || params.priority === 'haute') ? params.priority : 'normale'
+  let slaHours = serviceFamily.slaHours
+  if (priority === 'urgente') {
+    // Urgent SLA: 1h for 4h services, 4h for 24h services
+    slaHours = serviceFamily.slaHours <= 4 ? 1 : 4
+  }
+
+  // Find or fallback to a client user
+  let user = await db.user.findFirst({ where: { phone: msg.from } })
+  let company = user ? await db.company.findUnique({ where: { userId: user.id } }) : null
+
+  if (!user || !company) {
+    user = await db.user.findFirst({ where: { role: 'client' } })
+    if (user) {
+      company = await db.company.findUnique({ where: { userId: user.id } })
+    }
+  }
+
+  // Generate reference TSK-YYYYMMDD-NNN
+  const now = new Date()
+  const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
+  const todayTasks = await db.task.count({
+    where: {
+      createdAt: {
+        gte: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        lt: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1),
+      },
+    },
+  })
+  const seq = String(todayTasks + 1).padStart(3, '0')
+  const reference = `TSK-${dateStr}-${seq}`
+
+  // Calculate SLA deadline
+  const slaDeadline = new Date(now.getTime() + slaHours * 60 * 60 * 1000)
+  const isUrgent = priority === 'urgente'
+
+  // Create the task
+  const task = await db.task.create({
+    data: {
+      reference,
+      title: params.title,
+      family: serviceFamily.family,
+      status: 'en_attente',
+      priority,
+      urgent: isUrgent,
+      slaDeadline,
+      price: serviceFamily.price,
+      paymentMode: 'forfait',
+      clientId: user?.id || null,
+      companyId: company?.id || null,
+ timeline: {
+        create: {
+          event: 'demande_creee',
+          comment: `Demande créée via WhatsApp Bot — ${serviceFamily.name}`,
+        },
+      },
+    },
+  })
+
+  console.log(`[WhatsApp] Tâche ${reference} créée via WhatsApp par ${msg.from}`)
+
+  // Notify admin
+  const admin = await db.user.findFirst({ where: { role: 'admin' } })
+  if (admin) {
+    await db.notification.create({
+      data: {
+        type: 'system',
+        title: 'Nouvelle demande WhatsApp (ProDesk)',
+        message: `Tâche ${reference} — ${params.title} (${serviceFamily.name}) — via WhatsApp`,
+        userId: admin.id,
+        link: '/prodesk',
+      },
+    })
+  }
+
+  const slaDeadlineStr = slaDeadline.toLocaleString('fr-FR', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+
+  return buildTaskCreateConfirmResponse({
+    reference: task.reference,
+    title: task.title,
+    family: serviceFamily.name,
+    priority,
+    price: serviceFamily.price,
+    slaDeadline: slaDeadlineStr,
+  })
+}
+
+// Track an administrative task
+async function handleTaskTrack(reference: string): Promise<string> {
+  const task = await db.task.findUnique({
+    where: { reference },
+    include: {
+      timeline: { orderBy: { timestamp: 'asc' } },
+    },
+  })
+
+  if (!task) {
+    return `❌ *Non trouvé*
+
+La référence *${reference}* n'existe pas.
+
+Vérifiez et réessayez, ou tapez *mes_taches* pour voir vos demandes.`
+  }
+
+  return buildTaskTrackResponse({
+    reference: task.reference,
+    title: task.title,
+    family: task.family,
+    status: task.status,
+    priority: task.priority,
+    slaBreached: task.slaBreached,
+    createdAt: task.createdAt.toISOString(),
+    completedAt: task.completedAt?.toISOString() || null,
+    timeline: task.timeline.map((t) => ({
+      event: t.event,
+      comment: t.comment,
+      timestamp: t.timestamp.toISOString(),
+    })),
+  })
+}
+
+// Task history for a phone number
+async function handleTaskHistory(phone: string): Promise<string> {
+  // Find user by phone, then get their tasks
+  const user = await db.user.findFirst({ where: { phone } })
+  if (!user) {
+    return '📋 *Aucune demande administrative trouvée.*\n\nCommencez par faire une demande avec :\ndemande'
+  }
+
+  const tasks = await db.task.findMany({
+    where: { clientId: user.id },
+    orderBy: { createdAt: 'desc' },
+    take: 10,
+    select: {
+      reference: true,
+      title: true,
+      family: true,
+      status: true,
+      createdAt: true,
+      price: true,
+    },
+  })
+
+  return buildTaskHistoryResponse(tasks.map((t) => ({
+    ...t,
+    createdAt: t.createdAt.toISOString(),
+  })))
 }
 
 // Suivi d'une livraison

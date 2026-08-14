@@ -17,7 +17,7 @@ export interface IncomingMessage {
 }
 
 export interface ParsedCommand {
-  action: 'commander' | 'suivi' | 'aide' | 'historique' | 'annuler' | 'unknown'
+  action: 'commander' | 'suivi' | 'aide' | 'historique' | 'annuler' | 'service_list' | 'task_create' | 'task_track' | 'task_history' | 'unknown'
   params: Record<string, string>
   raw: string
 }
@@ -34,7 +34,20 @@ export interface ParsedCommand {
  *   "commander" / "cmd" / "nouvelle course"
  *   "commander: départ=...|destination=...|destinataire=...|tel=...|desc=..."
  *
- * SUIVI :
+ * SERVICES ADMINISTRATIFS :
+ *   "service" / "services" / "admin" / "administratif" / "demarche"
+ *
+ * DEMANDE DE TÂCHE :
+ *   "demande" / "tache" / "nouvelle_tache"
+ *   Format: demande\nService: (1-6)\nTitre: (description)\nPriorite: normale/haute/urgente
+ *
+ * SUIVI TÂCHE :
+ *   "suivi_tache TSK-xxx" / "etat_tache TSK-xxx"
+ *
+ * MES TÂCHES :
+ *   "mes_taches" / "mes demandes"
+ *
+ * SUIVI LIVRAISON :
  *   "suivi CMD-2024-0001" / "status CMD-2024-0001" / "track CMD-2024-0001"
  *
  * AIDE :
@@ -55,7 +68,45 @@ export function parseWhatsAppCommand(message: string): ParsedCommand {
     return { action: 'aide', params: {}, raw }
   }
 
-  // Historique
+  // Services administratifs — liste
+  if (['service', 'services', 'admin', 'administratif', 'demarche'].some(k => lower === k || lower.startsWith(k + ' '))) {
+    return { action: 'service_list', params: {}, raw }
+  }
+
+  // Mes tâches / Mes demandes administratives
+  if (lower === 'mes_taches' || lower === 'mes taches' || lower === 'mes demandes' || lower === 'mes_demandes') {
+    return { action: 'task_history', params: {}, raw }
+  }
+
+  // Suivi tâche — TSK-xxx
+  const taskTrackMatch = lower.match(/(?:suivi_tache|etat_tache|suivi tache|etat tache|suivi_tâche|etat_tâche)\s+(tsk-[\d-]+)/i)
+  if (taskTrackMatch) {
+    return { action: 'task_track', params: { reference: taskTrackMatch[1].toUpperCase() }, raw }
+  }
+
+  // Demande / nouvelle tâche — parse structured message
+  if (['demande', 'tache', 'nouvelle_tache', 'nouvelle tache', 'nouvelle_tâche', 'nouvelle tâche'].some(k => lower === k || lower.startsWith(k + ' ') || lower.startsWith(k + '\n'))) {
+    const params: Record<string, string> = {}
+    const lines = raw.split(/[\n|]/)
+    for (const line of lines) {
+      const eqIndex = line.indexOf(':')
+      if (eqIndex === -1) continue
+      const key = line.substring(0, eqIndex).trim().toLowerCase()
+      const value = line.substring(eqIndex + 1).trim()
+      if (!value) continue
+
+      if (['service', 'numero service', 'n° service'].includes(key)) {
+        params.serviceNumber = value.trim()
+      } else if (['titre', 'title', 'description', 'desc', 'objet', 'sujet'].includes(key)) {
+        params.title = value
+      } else if (['priorite', 'priorité', 'urgence', 'priority'].includes(key)) {
+        params.priority = value.toLowerCase()
+      }
+    }
+    return { action: 'task_create', params, raw }
+  }
+
+  // Historique livraisons
   if (['historique', 'mes courses', 'mes commandes', 'history'].some(k => lower.includes(k))) {
     return { action: 'historique', params: {}, raw }
   }
@@ -66,7 +117,7 @@ export function parseWhatsAppCommand(message: string): ParsedCommand {
     return { action: 'annuler', params: { reference: cancelMatch[1].toUpperCase() }, raw }
   }
 
-  // Suivi
+  // Suivi livraison (CMD-xxx only, not TSK)
   const trackMatch = lower.match(/(?:suivi|status|track|etat)\s+(cmd-[\d-]+)/i)
   if (trackMatch) {
     return { action: 'suivi', params: { reference: trackMatch[1].toUpperCase() }, raw }
@@ -153,7 +204,22 @@ historique
 ❌ *Annuler :*
 annuler CMD-2024-0801
 
-💡 *Astuce :* Envoyez simplement une adresse de Pointe-Noire pour démarrer !`
+🏛️ *Services administratifs :*
+services
+
+📝 *Nouvelle demande administrative :*
+demande
+Service: (1-6)
+Titre: (description)
+Priorite: normale/haute/urgente
+
+🔍 *Suivre une demande :*
+suivi_tache TSK-20250701-001
+
+📋 *Mes demandes admin :*
+mes_taches
+
+💡 *Astuce :* Envoyez simplement une adresse de Pointe-Noire pour démarrer une course !`
 }
 
 export function buildCommanderIncompleteResponse(params: Record<string, string>): string {
@@ -305,12 +371,129 @@ export function buildAnnulerResponse(success: boolean, reference: string): strin
 }
 
 export function buildUnknownResponse(): string {
-  return `🤔 *Je n'ai pas compris votre message.*\n\nEnvoyez *aide* pour voir les commandes disponibles, ou tapez directement une adresse de Pointe-Noire pour commander une course.`
+  return `🤔 *Je n'ai pas compris votre message.*\n\nEnvoyez *aide* pour voir les commandes disponibles, ou tapez directement une adresse de Pointe-Noire pour démarrer une course.`
+}
+
+// ========================
+// RÉPONSES ADMINISTRATIVES (PRODESK)
+// ========================
+
+// Service families reference for the WhatsApp bot
+const WHATSAPP_SERVICE_FAMILIES = [
+  { name: 'Bureau Digital', family: 'digital_office', price: 5000, slaHours: 4 },
+  { name: 'CNSS / Social', family: 'cnss_social', price: 7500, slaHours: 4 },
+  { name: 'Fiscalité', family: 'fiscalite', price: 10000, slaHours: 4 },
+  { name: 'SFEC', family: 'sfec', price: 15000, slaHours: 24 },
+  { name: 'Gestion Documentaire', family: 'documentaire', price: 2500, slaHours: 4 },
+  { name: 'Secretariat / Back-office', family: 'secretariat', price: 5000, slaHours: 4 },
+] as const
+
+export function getServiceFamilies() {
+  return WHATSAPP_SERVICE_FAMILIES
+}
+
+export function buildServiceListResponse(): string {
+  return `📋 *SERVICES ADMINISTRATIFS COURSIERB2B*\n\n1. *Bureau Digital* — 5 000 FCFA (SLA: 4h)\n2. *CNSS / Social* — 7 500 FCFA (SLA: 4h)\n3. *Fiscalité* — 10 000 FCFA (SLA: 4h)\n4. *SFEC* — 15 000 FCFA (SLA: 24h)\n5. *Gestion Documentaire* — 2 500 FCFA (SLA: 4h)\n6. *Secretariat / Back-office* — 5 000 FCFA (SLA: 4h)\n\nPour faire une demande, envoyez :\n*demande*\nService: (1-6)\nTitre: (description)\nPriorite: normale/haute/urgente`
+}
+
+export function buildTaskCreateIncompleteResponse(params: Record<string, string>): string {
+  const missing: string[] = []
+  if (!params.serviceNumber) missing.push('Service (numéro 1-6)')
+  if (!params.title) missing.push('Titre (description de la demande)')
+
+  return `📝 *Demande administrative — Informations manquantes*\n\nMerci ! J'ai besoin de quelques détails :\n\n${missing.map(m => `❌ ${m}`).join('\n')}\n\n*Format :*\ndemande\nService: (1-6)\nTitre: Description de votre demande\nPriorite: normale/haute/urgente\n\n*Exemple :*\ndemande\nService: 2\nTitre: Déclaration CNSS mensuelle juin 2025\nPriorite: haute`
+}
+
+export function buildTaskCreateConfirmResponse(data: {
+  reference: string
+  title: string
+  family: string
+  priority: string
+  price: number
+  slaDeadline: string
+}): string {
+  const priorityEmoji: Record<string, string> = { normale: '🟢', haute: '🟡', urgente: '🔴' }
+  const emoji = priorityEmoji[data.priority] || '🟢'
+
+  return `✅ *Demande administrative créée !*\n\n📄 Référence : *${data.reference}*\n${emoji} Priorité : ${data.priority.charAt(0).toUpperCase() + data.priority.slice(1)}\n🏷️ Famille : ${data.family}\n📝 Objet : ${data.title}\n💰 Prix : *${data.price.toLocaleString('fr-FR')} FCFA*\n⏱️ SLA : ${data.slaDeadline}\n\n📊 *Suivi en temps réel :*\nsuivi_tache ${data.reference}\n\n⏳ Un agent sera assigné sous peu.\n_Équipe CoursierB2B ProDesk_ 🏛️`
+}
+
+export function buildTaskTrackResponse(task: {
+  reference: string
+  title: string
+  family: string
+  status: string
+  priority: string
+  slaBreached: boolean
+  createdAt: string
+  completedAt: string | null
+  timeline: Array<{ event: string; comment: string | null; timestamp: string }>
+}): string {
+  const statusEmoji: Record<string, string> = {
+    en_attente: '⏳', en_cours: '🔄', en_validation: '🔍', termine: '✅', annule: '❌',
+  }
+  const statusLabel: Record<string, string> = {
+    en_attente: 'En attente', en_cours: 'En cours de traitement', en_validation: 'En validation', termine: 'Terminée', annule: 'Annulée',
+  }
+
+  const emoji = statusEmoji[task.status] || '❓'
+  const label = statusLabel[task.status] || task.status
+  const breachBadge = task.slaBreached ? '\n🚨 *SLA dépassé !*' : ''
+
+  let response = `${emoji} *Suivi ${task.reference}*\n\n📍 État : *${label}*${breachBadge}\n🏷️ Famille : ${task.family}\n📝 Objet : ${task.title}\n📅 Créée le : ${new Date(task.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+
+  if (task.completedAt) {
+    response += `\n✅ Terminée le : ${new Date(task.completedAt).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+  }
+
+  if (task.timeline && task.timeline.length > 0) {
+    response += '\n\n📜 *Historique :*\n'
+    const eEmoji: Record<string, string> = {
+      demande_creee: '📝', pieces_controlees: '📋', mandat_verifie: '✅', en_traitement: '🔄', soumis: '📤', valide: '✔️', preuve_fournie: '📎', archive: '🗄️', annule: '❌',
+    }
+    for (const event of task.timeline) {
+      const date = new Date(event.timestamp).toLocaleString('fr-FR', {
+        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+      })
+      response += `${eEmoji[event.event] || '📌'} ${event.comment || event.event} — ${date}\n`
+    }
+  }
+
+  return response
+}
+
+export function buildTaskHistoryResponse(tasks: Array<{
+  reference: string
+  title: string
+  family: string
+  status: string
+  createdAt: string
+  price: number
+}>): string {
+  if (tasks.length === 0) {
+    return '📋 *Aucune demande administrative trouvée.*\n\nCommencez par faire une demande avec :\ndemande'
+  }
+
+  const statusEmoji: Record<string, string> = {
+    en_attente: '⏳', en_cours: '🔄', en_validation: '🔍', termine: '✅', annule: '❌',
+  }
+
+  let response = `📋 *Vos demandes administratives (${tasks.length}) :*\n\n`
+  for (const t of tasks.slice(0, 10)) {
+    const emoji = statusEmoji[t.status] || '❓'
+    const date = new Date(t.createdAt).toLocaleDateString('fr-FR', {
+      day: '2-digit', month: '2-digit',
+    })
+    response += `${emoji} *${t.reference}* — ${date}\n   ${t.title}\n   ${t.family} — ${t.price.toLocaleString('fr-FR')} FCFA\n\n`
+  }
+
+  response += `Pour le détail d'une demande :\nsuivi_tache TSK-XXXX-XXX`
+  return response
 }
 
 // ========================
 // ENVOI VIA META API
-// ========================
+// =========================
 
 export async function sendWhatsAppMessage(
   to: string,
