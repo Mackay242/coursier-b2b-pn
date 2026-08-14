@@ -1,6 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
 const PRODESK_SERVICES = [
@@ -78,7 +76,7 @@ const PRODESK_SERVICES = [
   },
 ]
 
-// GET /api/services/seed - Page HTML pour initialiser les services (accessible sans auth)
+// GET - Page HTML pour initialiser les services (accessible sans auth)
 export async function GET() {
   const html = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Initialisation Services</title>
@@ -109,7 +107,7 @@ async function seed(){
   return new Response(html, { headers: { 'Content-Type': 'text/html' } });
 }
 
-// POST /api/services/seed - Semer les services PRODESK (idempotent via upsert)
+// POST - Semer les services PRODESK (idempotent via upsert)
 export async function POST() {
   try {
     const created: string[] = [];
