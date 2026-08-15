@@ -730,12 +730,16 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
 // VIEWS
 // ============================================================
 
-function DashboardView({ companyName, planLabel, companyData, onRefreshDeliveries }: {
-  companyName: string; planLabel: string; companyData: Company | null; onRefreshDeliveries?: () => void;
+function DashboardView({ companyName, planLabel, companyData, onRefreshDeliveries, userRole }: {
+  companyName: string; planLabel: string; companyData: Company | null; onRefreshDeliveries?: () => void; userRole?: string;
 }) {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activeDeliveries, setActiveDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
+  // Stats PRODESK
+  const [prodeskStats, setProdeskStats] = useState<{ total: number; enCours: number; terminees: number; slaRate: number; mandatsActifs: number; breachedCount: number } | null>(null);
+  const [recentTasks, setRecentTasks] = useState<any[]>([]);
+
   const fetchStats = useCallback(async () => {
     try {
       const res = await fetch('/api/dashboard/stats');
@@ -757,23 +761,57 @@ function DashboardView({ companyName, planLabel, companyData, onRefreshDeliverie
     } catch { /* ignore */ }
   }, []);
 
+  const fetchProdeskStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/tasks?limit=0');
+      if (res.ok) {
+        const data = await res.json();
+        const all = data.tasks || [];
+        const enCours = all.filter((t: any) => ['en_attente', 'en_cours', 'en_validation'].includes(t.status));
+        const terminees = all.filter((t: any) => t.status === 'termine');
+        const breached = all.filter((t: any) => t.slaBreached);
+        const total = all.length;
+        const slaRate = total > 0 ? Math.round(((total - breached.length) / total) * 100) : 100;
+        setProdeskStats({ total, enCours: enCours.length, terminees: terminees.length, slaRate, mandatsActifs: 0, breachedCount: breached.length });
+      }
+    } catch { /* tables pas encore creees */ }
+    try {
+      const res = await fetch('/api/mandates?status=actif&limit=1');
+      if (res.ok) {
+        const data = await res.json();
+        setProdeskStats(prev => prev ? { ...prev, mandatsActifs: data.total || 0 } : null);
+      }
+    } catch { /* ignore */ }
+    // Dernières tâches
+    try {
+      const res = await fetch('/api/tasks?limit=5&sort=newest');
+      if (res.ok) {
+        const data = await res.json();
+        setRecentTasks(data.tasks || []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([fetchStats(), fetchDeliveries()]);
+      const promises = [fetchStats(), fetchDeliveries()];
+      if (userRole === 'admin') promises.push(fetchProdeskStats());
+      await Promise.all(promises);
       setLoading(false);
     };
     load();
-  }, [fetchStats, fetchDeliveries]);
+  }, [fetchStats, fetchDeliveries, fetchProdeskStats, userRole]);
 
   // Auto-refresh (remplace Socket.io sur Vercel)
   useEffect(() => {
     const interval = setInterval(() => {
       fetchStats();
       fetchDeliveries();
+      if (userRole === 'admin') fetchProdeskStats();
     }, 30000);
     return () => clearInterval(interval);
-  }, [fetchStats, fetchDeliveries]);
+  }, [fetchStats, fetchDeliveries, fetchProdeskStats, userRole]);
 
   const planUsage = stats ? stats.coursesMensuelles.pourcentage : 0;
   const monthlyCourses = stats?.coursesMensuelles.utilisees || 0;
@@ -805,13 +843,53 @@ function DashboardView({ companyName, planLabel, companyData, onRefreshDeliverie
         <div className="absolute -right-4 -top-4 w-24 h-24 rounded-full bg-white/5" />
       </Card>
 
-      {/* Stats Grid */}
+      {/* Stats Grid — Livraison */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Courses actives" value={String(stats?.livraisonsActives ?? 0)} subtitle="En cours maintenant" icon={<Package className="w-5 h-5" />} loading={loading} />
         <StatCard title="Livrees aujourd'hui" value={String(stats?.completeesAujourdhui ?? 0)} subtitle="Ce jour" icon={<CheckCircle2 className="w-5 h-5" />} trend="+12%" trendUp loading={loading} />
         <StatCard title="Temps moyen" value={`${stats?.tempsMoyenPriseEnCharge ?? 0} min`} subtitle="Prise en charge" icon={<Timer className="w-5 h-5" />} trend="-3 min" trendUp loading={loading} />
         <StatCard title="Ce mois" value={`${monthlyCourses}/${planLimit}`} subtitle="Courses utilisees" icon={<BarChart3 className="w-5 h-5" />} loading={loading} />
       </div>
+
+      {/* Stats Grid — PRODESK (admin uniquement) */}
+      {userRole === 'admin' && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard title="Taches en cours" value={String(prodeskStats?.enCours ?? '—')} subtitle="Services administratifs" icon={<ClipboardList className="w-5 h-5" />} loading={loading} />
+          <StatCard title="SLA respecte" value={prodeskStats ? `${prodeskStats.slaRate}%` : '—'} subtitle="Taux de conformite" icon={<Shield className="w-5 h-5" />} loading={loading} />
+          <StatCard title="Mandats actifs" value={String(prodeskStats?.mandatsActifs ?? '—')} subtitle="En vigueur" icon={<Gavel className="w-5 h-5" />} loading={loading} />
+          <StatCard title="SLA depasse" value={String(prodeskStats?.breachedCount ?? '—')} subtitle="Hors delai" icon={<AlertTriangle className="w-5 h-5" />} loading={loading} />
+        </div>
+      )}
+
+      {userRole === 'admin' && recentTasks.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Dernieres taches admin</CardTitle>
+              <Button variant="outline" size="sm" className="gap-1.5">
+                Voir tout <ChevronRight className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentTasks.slice(0, 4).map((t: any) => (
+              <div key={t.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/40 hover:bg-muted/70 transition-colors">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold">{t.reference}</span>
+                    <Badge variant={t.slaBreached ? 'destructive' : 'outline'} className="text-[10px] px-1.5">{t.status.replace(/_/g, ' ')}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">{t.title}</p>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">{t.family?.replace(/_/g, ' ') || ''}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Active Deliveries */}
@@ -3083,7 +3161,7 @@ export default function Home() {
   const planLabel = 'Mon forfait';
 
   const viewMap: Record<View, React.ReactNode> = {
-    dashboard: <DashboardView key={deliveryRefreshKey} companyName={companyName} planLabel={planLabel} companyData={null} onRefreshDeliveries={refreshDeliveries} />,
+    dashboard: <DashboardView key={deliveryRefreshKey} companyName={companyName} planLabel={planLabel} companyData={null} onRefreshDeliveries={refreshDeliveries} userRole={userRole} />,
     commander: <CommanderView />,
     suivi: <SuiviView />,
     facturation: <FacturationView />,
