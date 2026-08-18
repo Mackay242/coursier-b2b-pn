@@ -43,7 +43,19 @@ export async function GET(request: NextRequest) {
         where.clientId = session.user.id
       }
     } else if (session.user.role === 'livreur') {
-      where.livreurId = session.user.id
+      // Resoudre l'ID Livreur a partir du User (pas de FK direct)
+      const livreur = await db.livreur.findFirst({
+        where: { OR: [
+          { phone: (session.user as Record<string, string>)?.phone },
+          { name: session.user.name },
+        ]},
+        select: { id: true },
+      })
+      if (livreur) {
+        where.livreurId = livreur.id
+      } else {
+        return NextResponse.json({ livraisons: [], pagination: { page: 1, limit: 20, total: 0, pages: 0 } })
+      }
     }
 
     // Filtres optionnels

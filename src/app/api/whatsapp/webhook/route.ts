@@ -177,19 +177,12 @@ Tapez *aide* pour voir tous les formats disponibles.`
     ? await db.company.findUnique({ where: { userId: user.id } })
     : null
 
-  // Si pas d'utilisateur, on utilise le premier compte client comme fallback
   if (!user || !company) {
-    // Prendre le premier client existant
-    user = await db.user.findFirst({ where: { role: 'client' } })
-    if (user) {
-      company = await db.company.findUnique({ where: { userId: user.id } })
-    }
-  }
+    return `⚠️ *Compte non reconnu*
 
-  if (!company) {
-    return `⚠️ *Erreur de configuration*
+Votre numéro ${msg.from} n'est pas associé à un compte CoursierB2B.
 
-Aucune entreprise cliente n'est configurée dans le système. Contactez l'administrateur au ${process.env.WHATSAPP_BUSINESS_NUMBER || '242066105805'}.`
+Inscrivez-vous d'abord sur ${process.env.NEXT_PUBLIC_APP_URL || 'https://courier-b2b-pn.vercel.app'} puis ajoutez ce numéro de téléphone dans vos parametres.`
   }
 
   // Générer la référence
@@ -314,10 +307,11 @@ Tapez *services* pour voir la liste des services disponibles.`
   let company = user ? await db.company.findUnique({ where: { userId: user.id } }) : null
 
   if (!user || !company) {
-    user = await db.user.findFirst({ where: { role: 'client' } })
-    if (user) {
-      company = await db.company.findUnique({ where: { userId: user.id } })
-    }
+    return `⚠️ *Compte non reconnu*
+
+Votre numéro n'est pas associé à un compte CoursierB2B.
+
+Inscrivez-vous sur ${process.env.NEXT_PUBLIC_APP_URL || 'https://courier-b2b-pn.vercel.app'} puis ajoutez ce numéro de téléphone dans vos parametres.`
   }
 
   // Generate reference TSK-YYYYMMDD-NNN

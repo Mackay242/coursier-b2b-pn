@@ -83,7 +83,21 @@ export async function PATCH(
 
     // Si le rôle est livreur, vérifier que la livraison lui est assignée
     if (session.user.role === 'livreur') {
-      if (!delivery.livreurId || delivery.livreurId !== session.user.id) {
+      if (!delivery.livreurId) {
+        return NextResponse.json(
+          { erreur: 'Cette livraison n\'est assignée à aucun livreur' },
+          { status: 403 }
+        )
+      }
+      // Resoudre l'ID Livreur a partir du User (pas de FK direct)
+      const livreur = await db.livreur.findFirst({
+        where: { OR: [
+          { phone: (session.user as Record<string, string>)?.phone },
+          { name: session.user.name },
+        ]},
+        select: { id: true },
+      })
+      if (!livreur || delivery.livreurId !== livreur.id) {
         return NextResponse.json(
           { erreur: 'Cette livraison ne vous est pas assignée' },
           { status: 403 }

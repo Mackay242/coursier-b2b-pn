@@ -289,7 +289,7 @@ function NotificationPanel({ open, onClose }: { open: boolean; onClose: () => vo
   };
 
   const markAllRead = async () => {
-    await fetch(`/api/notifications/all`, { method: 'PATCH' });
+    await fetch(`/api/notifications/all?all=true`, { method: 'PATCH' });
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
   };
@@ -1522,7 +1522,7 @@ function ForfaitsView() {
 }
 
 function LivreursView() {
-  const [livreurs, setLivreurs] = useState<Livreurs[]>([]);
+  const [livreurs, setLivreurs] = useState<Livreur[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1815,7 +1815,7 @@ function ParametresView() {
 // ============================================================
 function DispatchView() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [livreurs, setLivreurs] = useState<Livreurs[]>([]);
+  const [livreurs, setLivreurs] = useState<Livreur[]>([]);
   const [dispatchStats, setDispatchStats] = useState<DispatchStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);

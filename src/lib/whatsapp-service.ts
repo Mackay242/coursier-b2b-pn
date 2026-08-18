@@ -1,6 +1,8 @@
 // Service WhatsApp - Automatisation pour Coursier B2B Pointe-Noire
 // Supporte : Meta WhatsApp Business API + Mode simulation locale
 
+const META_API_URL = 'https://graph.facebook.com/v21.0'
+
 export interface WhatsAppConfig {
   phoneNumberId: string
   accessToken: string

@@ -21,7 +21,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const validRoles = ['client', 'admin', 'livreur']
+    // Securite : seul 'client' peut s'inscrire publiquement. Admin et livreur sont crees manuellement.
+    const validRoles = ['client']
     const userRole = validRoles.includes(role) ? role : 'client'
 
     const existing = await db.user.findUnique({ where: { email } })

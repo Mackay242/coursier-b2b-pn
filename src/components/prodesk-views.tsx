@@ -265,7 +265,7 @@ export function ServicesView() {
                   )}
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> SLA {svc.urgent ? svc.slaUrgentHours : svc.slaHours}h
+                      <Clock className="w-3 h-3" /> SLA {urgent ? svc.slaUrgentHours : svc.slaHours}h
                     </span>
                     <span className="flex items-center gap-1">
                       <ClipboardList className="w-3 h-3" /> {(svc as Service & { taskCount?: number }).taskCount || 0} tache(s)
@@ -342,6 +342,7 @@ export function NouvelleTacheView() {
         urgent,
         paymentMode,
         mandateId: mandateId.trim() || undefined,
+        completionNote: notes.trim() || undefined,
       };
       const res = await fetch('/api/tasks', {
         method: 'POST',
@@ -416,7 +417,7 @@ export function NouvelleTacheView() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-sm">{formatPrice(selectedService.priceUnit)} FCFA</p>
-                    <p className="text-muted-foreground">SLA {selectedService.urgent ? selectedService.slaUrgentHours : selectedService.slaHours}h</p>
+                    <p className="text-muted-foreground">SLA {urgent ? selectedService.slaUrgentHours : selectedService.slaHours}h</p>
                   </div>
                 </div>
               )}
