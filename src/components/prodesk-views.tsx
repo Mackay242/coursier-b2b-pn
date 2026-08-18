@@ -173,7 +173,7 @@ const getServiceIcon = (icon: string) => serviceIconMap[icon] || <FileText class
 // ============================================================
 // COMPONENT 1: ServicesView
 // ============================================================
-export function ServicesView() {
+export function ServicesView({ onNavigate }: { onNavigate?: (view: string) => void }) {
   const [services, setServices] = useState<(Service & { taskCount?: number })[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -203,7 +203,8 @@ export function ServicesView() {
           <h2 className="text-xl font-bold tracking-tight">Services administratifs</h2>
           <p className="text-sm text-muted-foreground mt-1">Catalogue complet de nos services de back-office et formalites administratives</p>
         </div>
-        <Button className="gap-2 shrink-0">
+        <Button className="gap-2 shrink-0" onClick={() => onNavigate?.('nouvelle_tache')}
+          >
           <Plus className="w-4 h-4" />
           Nouvelle demande
         </Button>

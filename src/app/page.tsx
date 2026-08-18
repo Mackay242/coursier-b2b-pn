@@ -3176,7 +3176,7 @@ export default function Home() {
     mes_courses: <MesCoursesView />,
     rapports: <RapportsView />,
     paiement: <PaiementView />,
-    services: <ServicesView />,
+    services: <ServicesView onNavigate={(v: string) => setCurrentView(v as View)} />,
     nouvelle_tache: <NouvelleTacheView />,
     taches: <TachesView />,
     admin_taches: <AdminTachesView />,
