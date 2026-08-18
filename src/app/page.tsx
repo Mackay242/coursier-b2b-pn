@@ -615,6 +615,7 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
       { id: 'carte', label: 'Carte', icon: <MapPinned className="w-4 h-4" /> },
       { id: 'dispatch', label: 'Dispatch', icon: <Truck className="w-4 h-4" />, badge: pendingCount },
+      { id: 'services', label: 'Services admin', icon: <Briefcase className="w-4 h-4" /> },
       { id: 'admin_taches', label: 'Taches admin', icon: <ClipboardList className="w-4 h-4" /> },
       { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
