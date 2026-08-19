@@ -125,7 +125,10 @@ export function MessagerieView() {
   };
 
   const handleCreate = async () => {
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      toast.error('Veuillez saisir un titre');
+      return;
+    }
     try {
       const res = await fetch('/api/conversations', {
         method: 'POST',
@@ -388,7 +391,7 @@ export function MessagerieView() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Annuler</Button>
-            <Button onClick={handleCreate} disabled={!newTitle.trim()}>Creer</Button>
+            <Button onClick={handleCreate}>Creer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
