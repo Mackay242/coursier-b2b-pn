@@ -47,6 +47,7 @@ export function MessagerieView() {
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('dossier');
   const [mobileDetail, setMobileDetail] = useState(false);
+  const [creating, setCreating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -124,11 +125,14 @@ export function MessagerieView() {
     setSending(false);
   };
 
+  const resetNewConv = () => { setNewTitle(''); setNewType('dossier'); setCreating(false); };
+
   const handleCreate = async () => {
     if (!newTitle.trim()) {
       toast.error('Veuillez saisir un titre');
       return;
     }
+    setCreating(true);
     try {
       const res = await fetch('/api/conversations', {
         method: 'POST',
@@ -138,11 +142,16 @@ export function MessagerieView() {
       if (res.ok) {
         const data = await res.json();
         toast.success('Conversation creee');
-        setShowNew(false); setNewTitle(''); setNewType('dossier');
+        setShowNew(false);
+        resetNewConv();
         setSelectedId(data.conversation.id);
         await fetchConversations();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Erreur lors de la creation");
       }
-    } catch { toast.error('Erreur'); }
+    } catch { toast.error('Erreur reseau'); }
+    setCreating(false);
   };
 
   const selected = conversations.find(c => c.id === selectedId);
@@ -363,7 +372,7 @@ export function MessagerieView() {
         </div>
       </div>
 
-      <Dialog open={showNew} onOpenChange={setShowNew}>
+      <Dialog open={showNew} onOpenChange={(open) => { if (!open) resetNewConv(); setShowNew(open); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nouvelle conversation</DialogTitle>
@@ -391,7 +400,7 @@ export function MessagerieView() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNew(false)}>Annuler</Button>
-            <Button onClick={handleCreate}>Creer</Button>
+            <Button onClick={handleCreate} disabled={creating}>{creating ? 'Creation...' : 'Creer'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
