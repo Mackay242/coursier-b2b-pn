@@ -34,11 +34,12 @@ import { Toaster } from '@/components/ui/sonner';
 import TrackingMap from '@/components/tracking-map-dynamic';
 import { ServicesView, NouvelleTacheView, TachesView, AdminTachesView, MandatsView, SLAMonitorView } from '@/components/prodesk-views';
 import { PartenairesView, ProceduresView, FichesPosteView, CorrespondanceView } from '@/components/prodesk-audit-views';
+import { MessagerieView } from '@/components/messagerie-view';
 
 // ============================================================
 // TYPES
 // ============================================================
-type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises' | 'whatsapp_bot' | 'services' | 'nouvelle_tache' | 'taches' | 'admin_taches' | 'mandats' | 'sla_monitor' | 'partenaires' | 'procedures' | 'fiches_poste' | 'correspondance';
+type View = 'dashboard' | 'commander' | 'suivi' | 'facturation' | 'forfaits' | 'livreurs' | 'parametres' | 'dispatch' | 'mes_courses' | 'rapports' | 'paiement' | 'carte' | 'entreprises' | 'whatsapp_bot' | 'services' | 'nouvelle_tache' | 'taches' | 'admin_taches' | 'mandats' | 'sla_monitor' | 'partenaires' | 'procedures' | 'fiches_poste' | 'correspondance' | 'messagerie';
 
 interface Delivery {
   id: string;
@@ -629,6 +630,7 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'mandats', label: 'Mandats', icon: <Gavel className="w-4 h-4" /> },
       { id: 'sla_monitor', label: 'SLA', icon: <Timer className="w-4 h-4" /> },
       { id: 'whatsapp_bot', label: 'WhatsApp Bot', icon: <MessageCircle className="w-4 h-4" /> },
+      { id: 'messagerie', label: 'Messagerie', icon: <Send className="w-4 h-4" /> },
       { id: 'rapports', label: 'Rapports', icon: <BarChart3 className="w-4 h-4" /> },
       { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
     ];
@@ -644,6 +646,7 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'nouvelle_tache', label: 'Nouvelle tache', icon: <ClipboardList className="w-4 h-4" /> },
       { id: 'taches', label: 'Mes taches', icon: <FileCheck2 className="w-4 h-4" /> },
       { id: 'correspondance', label: 'Correspondance', icon: <Send className="w-4 h-4" /> },
+      { id: 'messagerie', label: 'Messagerie', icon: <Send className="w-4 h-4" /> },
       { id: 'procedures', label: 'Procedures', icon: <BookOpen className="w-4 h-4" /> },
       { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
       { id: 'facturation', label: 'Facturation', icon: <Receipt className="w-4 h-4" /> },
@@ -3193,6 +3196,7 @@ export default function Home() {
     procedures: <ProceduresView />,
     fiches_poste: <FichesPosteView />,
     correspondance: <CorrespondanceView />,
+    messagerie: <MessagerieView />,
   };
 
   const pageTitle: Record<View, string> = {
@@ -3220,6 +3224,7 @@ export default function Home() {
     procedures: 'Procedures administratives',
     fiches_poste: 'Fiches de poste',
     correspondance: 'Correspondance administrative',
+    messagerie: 'Messagerie interne',
   };
 
   return (
