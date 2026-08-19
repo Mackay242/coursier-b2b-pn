@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import {
   MessageCircle, Plus, Search, Send, Lock, Users, FileText,
-  ChevronLeft, Clock, Eye, EyeOff
+  ChevronLeft, Clock, Eye, EyeOff, UserPlus, X, Check
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +27,10 @@ interface Message {
   id: string; conversationId: string; senderId: string; content: string;
   type: string; isRead: boolean; createdAt: string;
   senderName: string | null; senderEmail: string | null; senderRole: string | null;
+}
+
+interface UserItem {
+  id: string; name: string | null; email: string; role: string;
 }
 
 export function MessagerieView() {
@@ -46,6 +50,10 @@ export function MessagerieView() {
   const [showNew, setShowNew] = useState(false);
   const [newTitle, setNewTitle] = useState('');
   const [newType, setNewType] = useState('dossier');
+  const [selectedParticipants, setSelectedParticipants] = useState<UserItem[]>([]);
+  const [availableUsers, setAvailableUsers] = useState<UserItem[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [creating, setCreating] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -69,6 +77,20 @@ export function MessagerieView() {
         setMessages(data.messages || []);
       }
     } catch { /* ignore */ }
+  }, []);
+
+  const fetchUsers = useCallback(async (query: string) => {
+    setLoadingUsers(true);
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set('search', query);
+      const res = await fetch(`/api/users?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableUsers(data.users || []);
+      }
+    } catch { /* ignore */ }
+    setLoadingUsers(false);
   }, []);
 
   useEffect(() => {
@@ -105,6 +127,21 @@ export function MessagerieView() {
     }
   }, [selectedId, fetchMessages]);
 
+  // Charger les utilisateurs quand le dialog s'ouvre
+  useEffect(() => {
+    if (showNew) {
+      fetchUsers('');
+      setUserSearch('');
+    }
+  }, [showNew, fetchUsers]);
+
+  // Recherche avec debounce
+  useEffect(() => {
+    if (!showNew) return;
+    const timer = setTimeout(() => fetchUsers(userSearch), 300);
+    return () => clearTimeout(timer);
+  }, [userSearch, showNew, fetchUsers]);
+
   const handleSelect = (id: string) => { setSelectedId(id); setMobileDetail(true); };
 
   const handleSend = async () => {
@@ -125,7 +162,18 @@ export function MessagerieView() {
     setSending(false);
   };
 
-  const resetNewConv = () => { setNewTitle(''); setNewType('dossier'); setCreating(false); };
+  const resetNewConv = () => {
+    setNewTitle(''); setNewType('dossier'); setCreating(false);
+    setSelectedParticipants([]); setUserSearch('');
+  };
+
+  const toggleParticipant = (user: UserItem) => {
+    setSelectedParticipants(prev => {
+      const exists = prev.find(p => p.id === user.id);
+      if (exists) return prev.filter(p => p.id !== user.id);
+      return [...prev, user];
+    });
+  };
 
   const handleCreate = async () => {
     if (!newTitle.trim()) {
@@ -134,10 +182,11 @@ export function MessagerieView() {
     }
     setCreating(true);
     try {
+      const participantIds = selectedParticipants.map(p => p.id);
       const res = await fetch('/api/conversations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: newTitle.trim(), type: newType }),
+        body: JSON.stringify({ title: newTitle.trim(), type: newType, participantIds }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -157,6 +206,9 @@ export function MessagerieView() {
   const selected = conversations.find(c => c.id === selectedId);
   const filtered = conversations.filter(c => c.title.toLowerCase().includes(search.toLowerCase()));
   const totalUnread = conversations.reduce((s, c) => s + (c.unreadCount || 0), 0);
+
+  const selectedIds = new Set(selectedParticipants.map(p => p.id));
+  const filteredUsers = availableUsers.filter(u => !selectedIds.has(u.id));
 
   const formatTime = (dateStr: string) => {
     if (!dateStr) return '';
@@ -181,6 +233,12 @@ export function MessagerieView() {
   const getInitials = (name: string | null) => {
     if (!name) return '??';
     return name.slice(0, 2).toUpperCase();
+  };
+
+  const getRoleLabel = (role: string) => {
+    if (role === 'admin') return 'Admin';
+    if (role === 'agent') return 'Agent';
+    return 'Client';
   };
 
   return (
@@ -373,15 +431,83 @@ export function MessagerieView() {
       </div>
 
       <Dialog open={showNew} onOpenChange={(open) => { if (!open) resetNewConv(); setShowNew(open); }}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Nouvelle conversation</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
               <label className="text-sm font-medium mb-1.5 block">Titre</label>
-              <Input placeholder="Ex: Suivi dossier CNSS Dupont" value={newTitle} onChange={e => setNewTitle(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }} />
+              <Input placeholder="Ex: Suivi dossier CNSS Dupont" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
             </div>
+
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Destinataire(s)</label>
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher un utilisateur..."
+                  className="pl-9 h-9 text-sm"
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                />
+              </div>
+
+              {selectedParticipants.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {selectedParticipants.map(p => (
+                    <span key={p.id} className="inline-flex items-center gap-1 bg-primary/10 text-primary px-2 py-1 rounded-md text-xs font-medium">
+                      {p.name || p.email}
+                      <Badge variant="outline" className="text-[8px] px-1 py-0 ml-0.5">{getRoleLabel(p.role)}</Badge>
+                      <button onClick={() => toggleParticipant(p)} className="hover:text-destructive ml-0.5">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              <div className="border rounded-lg max-h-40 overflow-y-auto">
+                {loadingUsers ? (
+                  <div className="p-3 space-y-2">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <Skeleton className="w-7 h-7 rounded-full shrink-0" />
+                        <Skeleton className="h-3.5 w-32" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredUsers.length === 0 ? (
+                  <p className="text-xs text-muted-foreground p-3 text-center">Aucun utilisateur trouve</p>
+                ) : (
+                  <div className="p-1">
+                    {filteredUsers.map(u => (
+                      <button
+                        key={u.id}
+                        onClick={() => toggleParticipant(u)}
+                        className="w-full flex items-center gap-2.5 p-2 rounded-md hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <Avatar className="w-7 h-7">
+                          <AvatarFallback className="text-[10px] bg-muted">{getInitials(u.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{u.name || u.email}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{u.email}</p>
+                        </div>
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">{getRoleLabel(u.role)}</Badge>
+                        {selectedIds.has(u.id) && (
+                          <Check className="w-4 h-4 text-primary shrink-0" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {selectedParticipants.length > 0 && (
+                <p className="text-[11px] text-muted-foreground">{selectedParticipants.length} destinataire{selectedParticipants.length > 1 ? 's' : ''} selectionne{selectedParticipants.length > 1 ? 's' : ''}</p>
+              )}
+            </div>
+
             <div>
               <label className="text-sm font-medium mb-1.5 block">Type</label>
               <div className="grid grid-cols-3 gap-2">

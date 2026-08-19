@@ -638,6 +638,18 @@ function Sidebar({ current, onNavigate, open, onClose, companyName, planLabel, u
       { id: 'mes_courses', label: 'Mes courses', icon: <Package className="w-4 h-4" /> },
       { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
     ];
+    if (userRole === 'agent') return [
+      { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },
+      { id: 'commander', label: 'Commander', icon: <Plus className="w-4 h-4" /> },
+      { id: 'services', label: 'Services', icon: <Briefcase className="w-4 h-4" /> },
+      { id: 'nouvelle_tache', label: 'Nouvelle tache', icon: <ClipboardList className="w-4 h-4" /> },
+      { id: 'taches', label: 'Mes taches', icon: <FileCheck2 className="w-4 h-4" /> },
+      { id: 'suivi', label: 'Suivi courses', icon: <Navigation className="w-4 h-4" /> },
+      { id: 'correspondance', label: 'Correspondance', icon: <Send className="w-4 h-4" /> },
+      { id: 'messagerie', label: 'Messagerie', icon: <MessageCircle className="w-4 h-4" /> },
+      { id: 'procedures', label: 'Procedures', icon: <BookOpen className="w-4 h-4" /> },
+      { id: 'parametres', label: 'Parametres', icon: <Settings className="w-4 h-4" /> },
+    ];
     // client
     return [
       { id: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard className="w-4 h-4" /> },

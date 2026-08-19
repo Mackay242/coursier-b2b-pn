@@ -73,10 +73,12 @@ export async function POST(req: NextRequest) {
 
     const conversation = (conv as any[])[0];
 
+    const creatorRole = (user.role === 'admin') ? 'admin' : 'member';
+
     await db.$queryRawUnsafe(`
       INSERT INTO "ConversationParticipant" ("id", "conversationId", "userId", "role")
-      VALUES (gen_random_uuid()::text, $1, $2, 'admin')
-    `, conversation.id, user.id);
+      VALUES (gen_random_uuid()::text, $1, $2, $3)
+    `, conversation.id, user.id, creatorRole);
 
     if (participantIds && Array.isArray(participantIds) && participantIds.length > 0) {
       for (const pid of participantIds) {
